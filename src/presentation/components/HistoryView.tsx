@@ -6,9 +6,7 @@ import {
   ChevronRight, 
   Search, 
   TrendingUp, 
-  TrendingDown, 
-  Calendar,
-  Filter
+  TrendingDown
 } from 'lucide-react';
 
 interface HistoryViewProps {

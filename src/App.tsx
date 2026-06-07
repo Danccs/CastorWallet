@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@presentation/context/AuthContext';
 import { AppProvider, useApp } from '@presentation/context/AppContext';
 import { 

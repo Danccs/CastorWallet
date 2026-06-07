@@ -4,7 +4,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Plus, 
-  TrendingUp, 
   TrendingDown, 
   Edit2,
   Copy
@@ -44,10 +43,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
   };
 
   // 2. Calculations
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
   const totalExpense = transactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -184,7 +179,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <span style={{ fontSize: '0.85rem', opacity: 0.85 }}>Gastos Reales</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContext: 'space-between', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '2.2rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
               ${totalExpense.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
             </span>
@@ -247,7 +242,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
                 transition: 'width 0.4s ease'
               }}></div>
             </div>
-            <div style={{ display: 'flex', justifyContext: 'space-between', justifyContent: 'space-between', fontSize: '0.72rem', opacity: 0.8, marginTop: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', opacity: 0.8, marginTop: '6px' }}>
               <span>{overallProgress.toFixed(0)}% consumido</span>
               <span>Límite: ${totalBudgeted.toLocaleString('es-ES', { maximumFractionDigits: 0 })}</span>
             </div>

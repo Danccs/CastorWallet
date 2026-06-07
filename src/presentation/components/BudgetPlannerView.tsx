@@ -2,13 +2,8 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Category } from '@domain/entities/Category';
 import { 
-  Compass, 
-  Settings, 
   Edit2, 
-  Copy, 
-  Calendar, 
-  TrendingUp, 
-  ListFilter 
+  Copy
 } from 'lucide-react';
 
 export const BudgetPlannerView: React.FC = () => {

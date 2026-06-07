@@ -1,7 +1,7 @@
 import type { Category } from '@domain/entities/Category';
 import type { CategoryRepository } from '@domain/repositories/CategoryRepository';
 
-const DEFAULT_CATEGORIES: Category[] = [
+const DEFAULT_CATEGORIES: Category[] = ([
   // Egresos (Expenses)
   { name: 'Arriendo', type: 'expense', active: true },
   { name: 'Gastos Comunes', type: 'expense', active: true },
@@ -33,7 +33,7 @@ const DEFAULT_CATEGORIES: Category[] = [
   { name: 'Prestamos', type: 'income', active: true },
   { name: 'Ganancias', type: 'income', active: true },
   { name: 'Otros', type: 'income', active: true },
-];
+] as Omit<Category, 'defaultBudget'>[]).map(c => ({ ...c, defaultBudget: 0 }));
 
 export class LocalCategoryRepository implements CategoryRepository {
   async getAll(userId: string): Promise<Category[]> {
@@ -54,5 +54,26 @@ export class LocalCategoryRepository implements CategoryRepository {
   async saveAll(userId: string, categories: Category[]): Promise<void> {
     const key = `castor_wallet_categories_${userId}`;
     localStorage.setItem(key, JSON.stringify(categories));
+  }
+
+  async create(userId: string, category: Category): Promise<Category> {
+    const list = await this.getAll(userId);
+    if (list.some(c => c.name.toLowerCase() === category.name.toLowerCase() && c.type === category.type)) {
+      throw new Error('La categoría ya existe');
+    }
+    const updated = [...list, category];
+    await this.saveAll(userId, updated);
+    return category;
+  }
+
+  async update(userId: string, name: string, type: 'income' | 'expense', updates: Partial<Category>): Promise<void> {
+    const list = await this.getAll(userId);
+    const updated = list.map(c => {
+      if (c.name.toLowerCase() === name.toLowerCase() && c.type === type) {
+        return { ...c, ...updates };
+      }
+      return c;
+    });
+    await this.saveAll(userId, updated);
   }
 }
