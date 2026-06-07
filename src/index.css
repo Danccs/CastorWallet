@@ -1,0 +1,291 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Color Palette */
+  --bg-primary: #0a0c10;
+  --bg-secondary: #121620;
+  --bg-tertiary: #1b202e;
+  
+  --card-bg: rgba(18, 22, 32, 0.75);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-glow: rgba(99, 102, 241, 0.15);
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  /* Brand Colors */
+  --color-primary: #818cf8; /* Indigo/Purpleish */
+  --color-primary-hover: #6366f1;
+  --color-success: #14b8a6; /* Teal */
+  --color-danger: #f43f5e; /* Rose */
+  --color-warning: #f59e0b; /* Amber */
+  --color-info: #0ea5e9; /* Sky blue */
+
+  /* Glassmorphism */
+  --glass-bg: rgba(18, 22, 32, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-blur: blur(16px);
+  
+  /* Fonts */
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  
+  /* Layout constraints */
+  --mobile-max-width: 480px;
+}
+
+/* Reset & Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: #050608;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Mobile Wrapper - Constraints the app to a phone layout on desktop */
+#root {
+  width: 100%;
+  max-width: var(--mobile-max-width);
+  height: 100vh;
+  min-height: -webkit-fill-available;
+  background-color: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-y: auto;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+/* UI Elements & Components */
+
+/* Premium Glassmorphic Cards */
+.card {
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.card:active {
+  transform: scale(0.99);
+}
+
+/* Action Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  width: 100%;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #6366f1 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.2);
+}
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--card-border);
+}
+
+.btn-secondary:active {
+  transform: scale(0.97);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--color-danger) 0%, #e11d48 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3);
+}
+
+/* Form Controls */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+}
+
+/* Navigation bar */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--mobile-max-width);
+  height: 70px;
+  background: rgba(10, 12, 16, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--card-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.nav-item.active {
+  color: var(--color-primary);
+}
+
+/* Header UI */
+.header {
+  padding: 24px 20px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: rgba(10, 12, 16, 0.8);
+  backdrop-filter: blur(12px);
+  z-index: 90;
+}
+
+/* Transaction List Item */
+.transaction-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 14px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.transaction-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.transaction-icon.income {
+  background: rgba(20, 184, 166, 0.15);
+  color: var(--color-success);
+}
+
+.transaction-icon.expense {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--color-danger);
+}
+
+.amount {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.amount.income {
+  color: var(--color-success);
+}
+
+.amount.expense {
+  color: var(--color-danger);
+}
+
+/* Screen container */
+.screen {
+  padding: 20px;
+  padding-bottom: 90px;
+}
