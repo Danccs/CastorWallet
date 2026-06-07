@@ -127,15 +127,30 @@ Para permitir a tus usuarios iniciar sesión con cuentas de Google:
    - En **Permisos** (Scopes), añade `./auth/userinfo.email` y `./auth/userinfo.profile`.
 4. Ve a **Credenciales** (Credentials) -> **Crear Credenciales** -> **ID de cliente de OAuth** (OAuth Client ID):
    - Tipo de aplicación: **Aplicación web**.
-   - Nombre: `CastorWallet Supabase Auth`.
-   - Deja los campos de redirección vacíos por un momento y haz clic en **Crear**. Copia el **Client ID** y el **Client Secret** generados.
+   - Nombre: `CastorWallet Client`.
+   - En **Orígenes de JavaScript autorizados** (Authorized JavaScript origins), añade:
+     * `http://localhost:5173` (Para desarrollo local)
+     * `https://TU_SUBDOMINIO.netlify.app` (El link de tu app en Netlify)
+   - En **URIs de redirección autorizados** (Authorized redirect URIs), añade:
+     * `http://localhost:5173`
+     * `https://TU_SUBDOMINIO.netlify.app`
+   - Haz clic en **Crear**. Copia el **Client ID** y el **Client Secret** generados.
 
-### Paso B: Enlazar con Supabase Auth
+### Paso B: Enlazar con Supabase Auth (Para la redirección alternativa)
 1. Ve a tu panel de Supabase -> **Authentication** -> **Providers** -> **Google**.
 2. Activa el proveedor (toggle enabled).
 3. Pega el **Client ID** y **Client Secret** obtenidos de Google Cloud.
 4. Supabase te mostrará una URL llamada **Redirect URL** (ej: `https://your-project.supabase.co/auth/v1/callback`). Cópiala.
-5. Regresa a Google Cloud Console -> Edita la credencial OAuth que creaste antes y añade la URL copiada al campo **URI de redirección autorizados** (Authorized redirect URIs). Guarda los cambios.
+5. Regresa a Google Cloud Console -> Edita la credencial OAuth que creaste y añade esta URL de callback de Supabase al campo **URIs de redirección autorizados** (Authorized redirect URIs) junto a las tuyas. Guarda los cambios.
+
+### Paso C: Configurar la variable local y de Netlify
+Para habilitar el botón nativo de Google (que muestra tu marca "Castor Wallet" directamente en tu dominio sin mostrar el ID feo de Supabase):
+1. Crea/actualiza tu archivo `.env.local` en la raíz del proyecto agregando la clave `VITE_GOOGLE_CLIENT_ID`:
+   ```env
+   VITE_GOOGLE_CLIENT_ID=TU_CLIENT_ID_DE_GOOGLE.apps.googleusercontent.com
+   ```
+2. Agrega la misma variable de entorno `VITE_GOOGLE_CLIENT_ID` en el panel de control de **Netlify** (junto con las de Supabase) y realiza un nuevo despliegue con limpieza de caché (**Clear cache and deploy site**).
+
 
 ---
 

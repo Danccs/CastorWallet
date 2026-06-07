@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithGoogleToken: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -68,6 +69,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogleToken = async (idToken: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error de login con ID Token:', err);
+      alert('Error al autenticar con Google. Por favor, reintenta.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -79,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithGoogleToken, signOut }}>
       {children}
     </AuthContext.Provider>
   );
