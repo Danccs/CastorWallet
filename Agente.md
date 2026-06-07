@@ -60,3 +60,4 @@ src/
 3. **Manejo de Errores**: Capturar errores en la capa `data` y transformarlos en objetos de error comprensibles para el dominio antes de lanzarlos a la UI.
 4. **Comentarios de Código**: Mantener comentarios claros en la lógica de negocio compleja, respetando la estructura existente.
 5. **No Placeholders**: Al crear vistas, implementar datos dummy realistas si la base de datos no está disponible, para que la UI sea funcional de inmediato.
+6. **Formato de Montos**: Mostrar siempre todos los montos de dinero formateados con separador de miles y sin decimales en todas las pantallas, listas, tablas y resúmenes de la aplicación, utilizando la configuración regional `'es-ES'` con `maximumFractionDigits: 0` (ej: `$1.250` en lugar de `$1250.00` o `$1.250,00`).

@@ -1,33 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@presentation/context/AuthContext';
+import { AppProvider, useApp } from '@presentation/context/AppContext';
 import { 
   Wallet, 
-  TrendingUp, 
-  TrendingDown, 
-  Plus, 
-  LogOut, 
-  DollarSign, 
-  Tag, 
-  X,
-  CreditCard
+  History as HistoryIcon, 
+  Tag as TagIcon, 
+  LogOut,
+  TrendingUp
 } from 'lucide-react';
+import { DashboardView } from '@presentation/components/DashboardView';
+import { HistoryView } from '@presentation/components/HistoryView';
+import { CategoryManagerView } from '@presentation/components/CategoryManagerView';
+import { TransactionFormView } from '@presentation/components/TransactionFormView';
+import { BudgetPlannerView } from '@presentation/components/BudgetPlannerView';
+import type { Transaction } from '@domain/entities/Transaction';
 
-// Main App Component with AuthProvider wrapper
+// Main App Component with Providers
 export default function App() {
   return (
     <AuthProvider>
-      <MainContainer />
+      <AppProvider>
+        <MainContainer />
+      </AppProvider>
     </AuthProvider>
   );
 }
 
-// Inner container that listens to auth state
+// Inner container
 function MainContainer() {
   const { user, loading, signInWithGoogle, signInWithGoogleToken, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'home' | 'budgets'>('home');
-  const [showAddForm, setShowAddForm] = useState(false);
+  const { loading: loadingApp } = useApp();
+  
+  const [activeTab, setActiveTab] = useState<'home' | 'budgets' | 'history' | 'categories'>('home');
+  const [showForm, setShowForm] = useState<boolean>(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
 
-  // Initialize official Google Sign-In button (Option 2)
+  // Initialize official Google Sign-In button
   useEffect(() => {
     const google = (window as any).google;
     if (google && !user && !loading) {
@@ -50,32 +58,12 @@ function MainContainer() {
           }
         );
 
-        // Trigger Google One Tap prompt automatically
         google.accounts.id.prompt();
       } catch (err) {
         console.error('Error al inicializar el SDK de Google:', err);
       }
     }
   }, [user, loading]);
-  
-  // Dummy State for immediate interactivity (satisfying "No Placeholders" rule)
-  const [transactions, setTransactions] = useState([
-    { id: '1', description: 'Suscripción Netflix', amount: 12.99, type: 'expense', category: 'Entretenimiento', date: new Date().toLocaleDateString() },
-    { id: '2', description: 'Freelance Frontend', amount: 450.00, type: 'income', category: 'Trabajo', date: new Date().toLocaleDateString() },
-    { id: '3', description: 'Compra Supermercado', amount: 84.50, type: 'expense', category: 'Alimentos', date: new Date().toLocaleDateString() },
-  ]);
-
-  const [budgets, setBudgets] = useState([
-    { id: '1', category: 'Alimentos', limit: 300, spent: 84.50 },
-    { id: '2', category: 'Entretenimiento', limit: 100, spent: 12.99 },
-    { id: '3', category: 'Transporte', limit: 150, spent: 0 },
-  ]);
-
-  // Form State
-  const [desc, setDesc] = useState('');
-  const [amount, setAmount] = useState('');
-  const [type, setType] = useState<'income' | 'expense'>('expense');
-  const [category, setCategory] = useState('Alimentos');
 
   if (loading) {
     return (
@@ -110,19 +98,18 @@ function MainContainer() {
       }}>
         {/* Brand / Logo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '60px' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '24px',
-            background: 'linear-gradient(135deg, var(--color-primary) 0%, #4f46e5 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 12px 30px rgba(99, 102, 241, 0.4)',
-            marginBottom: '20px'
-          }}>
-            <Wallet size={40} color="#ffffff" />
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="CastorWallet Logo" 
+            style={{
+              width: '90px',
+              height: '90px',
+              borderRadius: '24px',
+              boxShadow: '0 8px 24px rgba(22, 52, 40, 0.12)',
+              marginBottom: '20px',
+              objectFit: 'cover'
+            }} 
+          />
           <h1 style={{ fontSize: '2.5rem', fontWeight: 700, letterSpacing: '-0.05em', marginBottom: '8px' }}>
             Castor<span style={{ color: 'var(--color-primary)' }}>Wallet</span>
           </h1>
@@ -133,7 +120,6 @@ function MainContainer() {
 
         {/* Action Button & Disclaimer */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '40px', alignItems: 'center', width: '100%' }}>
-          {/* Container for official Google Sign-In Button */}
           <div style={{ display: 'flex', justifyContent: 'center', width: '100%', minHeight: '40px' }}>
             <div id="google-signin-btn"></div>
           </div>
@@ -160,420 +146,148 @@ function MainContainer() {
     );
   }
 
-  // Dashboard calculations
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalExpense = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const currentBalance = totalIncome - totalExpense;
-
-  // Form Submit Handler
-  const handleAddTransaction = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!desc || !amount) return;
-
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount)) return;
-
-    const newTx = {
-      id: Date.now().toString(),
-      description: desc,
-      amount: parsedAmount,
-      type,
-      category,
-      date: new Date().toLocaleDateString()
-    };
-
-    // Update transactions list
-    setTransactions([newTx, ...transactions]);
-
-    // Update budgets spent if it's an expense and category matches
-    if (type === 'expense') {
-      setBudgets(budgets.map(b => {
-        if (b.category.toLowerCase() === category.toLowerCase()) {
-          return { ...b, spent: b.spent + parsedAmount };
-        }
-        return b;
-      }));
-    }
-
-    // Reset Form
-    setDesc('');
-    setAmount('');
-    setShowAddForm(false);
+  // Handle Edit click from History
+  const handleEditClick = (tx: Transaction) => {
+    setEditingTransaction(tx);
+    setShowForm(true);
   };
 
   return (
     <>
-      {/* Header Sticky Area */}
-      <header className="header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {user.avatarUrl ? (
-            <img 
-              src={user.avatarUrl} 
-              alt={user.name} 
-              style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--color-primary)' }} 
-            />
-          ) : (
-            <div style={{ 
-              width: '36px', 
-              height: '36px', 
-              borderRadius: '50%', 
-              backgroundColor: 'var(--color-primary)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              fontWeight: 'bold'
-            }}>
-              {user.name ? user.name.charAt(0) : 'U'}
-            </div>
-          )}
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Hola,</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user.name || user.email}
-            </div>
-          </div>
-        </div>
-
-        <h2 style={{ fontSize: '1.2rem', letterSpacing: '-0.03em' }}>
-          Castor<span style={{ color: 'var(--color-primary)' }}>Wallet</span>
-        </h2>
-
-        <button 
-          onClick={signOut} 
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: 'var(--text-secondary)', 
-            cursor: 'pointer',
-            padding: '6px'
+      {showForm ? (
+        <TransactionFormView 
+          transactionToEdit={editingTransaction} 
+          onClose={() => {
+            setShowForm(false);
+            setEditingTransaction(undefined);
           }}
-          title="Cerrar Sesión"
-        >
-          <LogOut size={20} />
-        </button>
-      </header>
-
-      {/* Main Screen Content */}
-      <main className="screen">
-        {activeTab === 'home' ? (
-          <div>
-            {/* Balance Main Card */}
-            <div className="card" style={{ 
-              background: 'linear-gradient(135deg, rgba(27, 32, 46, 0.95) 0%, rgba(18, 22, 32, 0.95) 100%)',
-              border: '1px solid rgba(129, 140, 248, 0.25)',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              {/* Background ambient glow */}
-              <div style={{
-                position: 'absolute',
-                top: '-40%',
-                right: '-20%',
-                width: '180px',
-                height: '180px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--card-glow)',
-                filter: 'blur(40px)',
-                pointerEvents: 'none'
-              }}></div>
-
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Balance Total</div>
-              <div style={{ fontSize: '2.2rem', fontWeight: 700, fontFamily: 'var(--font-display)', marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.6rem', color: 'var(--text-secondary)', marginRight: '4px' }}>$</span>
-                {currentBalance.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-
-              {/* Income / Expense Split summary */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-success)', fontSize: '0.8rem', marginBottom: '2px' }}>
-                    <TrendingUp size={14} />
-                    <span>Ingresos</span>
-                  </div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-display)' }}>
-                    ${totalIncome.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-danger)', fontSize: '0.8rem', marginBottom: '2px' }}>
-                    <TrendingDown size={14} />
-                    <span>Gastos</span>
-                  </div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-display)' }}>
-                    ${totalExpense.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions / Add Button */}
-            <button className="btn btn-primary" onClick={() => setShowAddForm(true)} style={{ marginBottom: '24px' }}>
-              <Plus size={20} />
-              Registrar Movimiento
-            </button>
-
-            {/* Recent Transactions List */}
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Actividad Reciente</span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-secondary)' }}>Historial</span>
-              </h3>
-
-              {transactions.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '30px 20px', color: 'var(--text-muted)' }}>
-                  No tienes movimientos registrados.
-                </div>
+        />
+      ) : (
+        <>
+          {/* Header Sticky Area */}
+          <header className="header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {user.avatarUrl ? (
+                <img 
+                  src={user.avatarUrl} 
+                  alt={user.name} 
+                  style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--color-primary)' }} 
+                />
               ) : (
-                transactions.map((tx) => (
-                  <div key={tx.id} className="transaction-item">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div className={`transaction-icon ${tx.type}`}>
-                        {tx.type === 'income' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{tx.description}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '2px' }}>
-                          <span>{tx.category}</span>
-                          <span style={{ width: '3px', height: '3px', borderRadius: '50%', backgroundColor: 'var(--text-muted)' }}></span>
-                          <span>{tx.date}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className={`amount ${tx.type}`}>
-                      {tx.type === 'income' ? '+' : '-'}${tx.amount.toFixed(2)}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        ) : (
-          /* Budgets Screen */
-          <div>
-            <h3 style={{ fontSize: '1.3rem', marginBottom: '6px' }}>Presupuestos Mensuales</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
-              Controla tus límites de gasto por cada categoría disponible.
-            </p>
-
-            {budgets.map((b) => {
-              const pct = Math.min((b.spent / b.limit) * 100, 100);
-              const color = pct >= 90 ? 'var(--color-danger)' : pct >= 70 ? 'var(--color-warning)' : 'var(--color-success)';
-
-              return (
-                <div key={b.id} className="card" style={{ marginBottom: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <div style={{ fontWeight: 600, fontSize: '1rem' }}>{b.category}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>${b.spent.toFixed(2)}</span> / ${b.limit}
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ 
-                      width: `${pct}%`, 
-                      height: '100%', 
-                      backgroundColor: color, 
-                      borderRadius: '4px',
-                      transition: 'width 0.4s ease-out',
-                      boxShadow: `0 0 8px ${color}80`
-                    }}></div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                    <span>{pct.toFixed(0)}% consumido</span>
-                    <span>Restan ${(b.limit - b.spent) > 0 ? `$${(b.limit - b.spent).toFixed(2)}` : '$0.00'}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
-
-      {/* Add Transaction Overlay Sheet (Bottom Sheet style) */}
-      {showAddForm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          zIndex: 200,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          flexDirection: 'column'
-        }}>
-          {/* Backdrop Touch Close area */}
-          <div style={{ flexGrow: 1 }} onClick={() => setShowAddForm(false)}></div>
-
-          {/* Form Content */}
-          <div style={{
-            background: 'var(--bg-secondary)',
-            borderTopLeftRadius: '24px',
-            borderTopRightRadius: '24px',
-            padding: '24px 20px 32px',
-            maxHeight: '85vh',
-            overflowY: 'auto',
-            borderTop: '1px solid rgba(255,255,255,0.08)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem' }}>Nuevo Movimiento</h3>
-              <button 
-                onClick={() => setShowAddForm(false)} 
-                style={{ 
-                  background: 'var(--bg-tertiary)', 
-                  border: 'none', 
-                  color: 'var(--text-secondary)',
-                  borderRadius: '50%',
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
+                <div style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '50%', 
+                  backgroundColor: 'var(--color-primary)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
                   justifyContent: 'center',
-                  cursor: 'pointer'
-                }}
-              >
-                <X size={18} />
-              </button>
+                  fontWeight: 'bold',
+                  color: '#ffffff'
+                }}>
+                  {user.name ? user.name.charAt(0) : 'U'}
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Hola,</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 600, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user.name || user.email}
+                </div>
+              </div>
             </div>
 
-            <form onSubmit={handleAddTransaction}>
-              {/* Type Switcher */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '1fr 1fr', 
-                gap: '10px', 
-                background: 'var(--bg-primary)', 
-                padding: '4px', 
-                borderRadius: '12px', 
-                marginBottom: '20px' 
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setType('expense')}
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    background: type === 'expense' ? 'var(--color-danger)' : 'transparent',
-                    color: type === 'expense' ? '#ffffff' : 'var(--text-secondary)',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  Gasto
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setType('income')}
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    background: type === 'income' ? 'var(--color-success)' : 'transparent',
-                    color: type === 'income' ? '#ffffff' : 'var(--text-secondary)',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  Ingreso
-                </button>
-              </div>
+            <h2 style={{ fontSize: '1.2rem', letterSpacing: '-0.03em' }}>
+              Castor<span style={{ color: 'var(--color-primary)' }}>Wallet</span>
+            </h2>
 
-              {/* Amount Input */}
-              <div className="form-group">
-                <label className="form-label">Monto ($)</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <DollarSign size={18} style={{ position: 'absolute', left: '16px', color: 'var(--text-muted)' }} />
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="form-input"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    style={{ paddingLeft: '40px' }}
-                    required
-                    autoFocus
-                  />
-                </div>
-              </div>
+            <button 
+              onClick={signOut} 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: 'var(--text-secondary)', 
+                cursor: 'pointer',
+                padding: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Cerrar Sesión"
+            >
+              <LogOut size={20} />
+            </button>
+          </header>
 
-              {/* Description Input */}
-              <div className="form-group">
-                <label className="form-label">Descripción</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <CreditCard size={18} style={{ position: 'absolute', left: '16px', color: 'var(--text-muted)' }} />
-                  <input
-                    type="text"
-                    placeholder="Ej. Compra de cena"
-                    className="form-input"
-                    value={desc}
-                    onChange={(e) => setDesc(e.target.value)}
-                    style={{ paddingLeft: '40px' }}
-                    required
-                  />
-                </div>
+          {/* Main Content Area */}
+          <main className="screen">
+            {loadingApp ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '12px' }}>
+                <div className="spinner" style={{
+                  width: '28px',
+                  height: '28px',
+                  border: '2.5px solid rgba(129, 140, 248, 0.2)',
+                  borderTopColor: 'var(--color-primary)',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'var(--font-display)' }}>Sincronizando datos...</p>
+                <style>{`
+                  @keyframes spin {
+                    to { transform: rotate(360deg); }
+                  }
+                `}</style>
               </div>
+            ) : (
+              <>
+                {activeTab === 'home' && (
+                  <DashboardView onAddClick={() => setShowForm(true)} />
+                )}
+                {activeTab === 'budgets' && (
+                  <BudgetPlannerView />
+                )}
+                {activeTab === 'history' && (
+                  <HistoryView onEditClick={handleEditClick} />
+                )}
+                {activeTab === 'categories' && (
+                  <CategoryManagerView />
+                )}
+              </>
+            )}
+          </main>
 
-              {/* Category selector */}
-              <div className="form-group">
-                <label className="form-label">Categoría</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <Tag size={18} style={{ position: 'absolute', left: '16px', color: 'var(--text-muted)' }} />
-                  <select
-                    className="form-input"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    style={{ paddingLeft: '40px', appearance: 'none', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
-                  >
-                    <option value="Alimentos">Alimentos</option>
-                    <option value="Entretenimiento">Entretenimiento</option>
-                    <option value="Transporte">Transporte</option>
-                    <option value="Trabajo">Trabajo / Ingresos</option>
-                    <option value="Varios">Otros / Varios</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
-                Registrar
-              </button>
-            </form>
-          </div>
-        </div>
+          {/* Navigation Bottom Bar */}
+          <nav className="nav-bar" style={{ padding: '0 4px', gap: '2px' }}>
+            <button 
+              className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
+              onClick={() => setActiveTab('home')}
+            >
+              <Wallet size={18} />
+              <span style={{ fontSize: '0.7rem' }}>Inicio</span>
+            </button>
+            <button 
+              className={`nav-item ${activeTab === 'budgets' ? 'active' : ''}`}
+              onClick={() => setActiveTab('budgets')}
+            >
+              <TrendingUp size={18} />
+              <span style={{ fontSize: '0.7rem' }}>Presupuestos</span>
+            </button>
+            <button 
+              className={`nav-item ${activeTab === 'history' ? 'active' : ''}`}
+              onClick={() => setActiveTab('history')}
+            >
+              <HistoryIcon size={18} />
+              <span style={{ fontSize: '0.7rem' }}>Historial</span>
+            </button>
+            <button 
+              className={`nav-item ${activeTab === 'categories' ? 'active' : ''}`}
+              onClick={() => setActiveTab('categories')}
+            >
+              <TagIcon size={18} />
+              <span style={{ fontSize: '0.7rem' }}>Categorías</span>
+            </button>
+          </nav>
+        </>
       )}
-
-      {/* Navigation Bottom Bar */}
-      <nav className="nav-bar">
-        <button 
-          className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
-          onClick={() => setActiveTab('home')}
-        >
-          <Wallet size={20} />
-          <span>Inicio</span>
-        </button>
-        <button 
-          className={`nav-item ${activeTab === 'budgets' ? 'active' : ''}`}
-          onClick={() => setActiveTab('budgets')}
-        >
-          <TrendingDown size={20} />
-          <span>Límites</span>
-        </button>
-      </nav>
     </>
   );
 }

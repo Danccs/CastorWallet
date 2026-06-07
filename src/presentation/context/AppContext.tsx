@@ -1,0 +1,423 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import type { Transaction } from '@domain/entities/Transaction';
+import type { Budget } from '@domain/entities/Budget';
+import type { Category } from '@domain/entities/Category';
+import { SupabaseTransactionRepository } from '@infrastructure/supabase/SupabaseTransactionRepository';
+import { SupabaseBudgetRepository } from '@infrastructure/supabase/SupabaseBudgetRepository';
+import { SupabaseCategoryRepository } from '@infrastructure/supabase/SupabaseCategoryRepository';
+import { supabase } from '@infrastructure/supabase/client';
+
+interface AppContextType {
+  currentPeriod: string; // YYYY-MM
+  setCurrentPeriod: (period: string) => void;
+  transactions: Transaction[];
+  budgets: Budget[];
+  sixMonthBudgets: Budget[]; // NUEVO
+  categories: Category[];
+  loading: boolean;
+  
+  // Transaction operations
+  addTransaction: (tx: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => Promise<void>;
+  editTransaction: (id: string, tx: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  
+  // Category operations
+  addCategory: (name: string, type: 'income' | 'expense') => Promise<void>;
+  toggleCategory: (name: string, type: 'income' | 'expense') => Promise<void>;
+  updateCategoryName: (oldName: string, newName: string, type: 'income' | 'expense') => Promise<void>;
+  updateCategoryBudget: (name: string, type: 'income' | 'expense', budget: number) => Promise<void>;
+  
+  // Budget operations
+  setBudgetLimit: (category: string, limit: number) => Promise<void>;
+  setBudgetLimitForPeriod: (category: string, period: string, limit: number) => Promise<void>; // NUEVO
+  applyBudgetTemplate: (targetPeriod?: string) => Promise<void>; // MODIFICADO
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const transactionRepo = new SupabaseTransactionRepository();
+const budgetRepo = new SupabaseBudgetRepository();
+const categoryRepo = new SupabaseCategoryRepository();
+
+const DEFAULT_CATEGORIES: Category[] = [
+  // Egresos (Expenses)
+  { name: 'Arriendo', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Gastos Comunes', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Supermercado', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Alimentación', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Internet Hogar', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Plan Celular', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Suscripciones Streaming', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Suscripciones Web', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Medicamentos', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Seguro Médico', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Consultas Medicas', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Examenes laboratorios', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Lavanderia', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Luz', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Agua', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Gas', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Taxis (Uber)', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Cine/Entretenimiendos', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Regalos', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Otros', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Café/Snacks', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Transporte Publico', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Gasolina', type: 'expense', active: true, defaultBudget: 0 },
+  { name: 'Estacionamientos', type: 'expense', active: true, defaultBudget: 0 },
+  
+  // Ingresos (Income)
+  { name: 'Sueldo', type: 'income', active: true, defaultBudget: 0 },
+  { name: 'Prestamos', type: 'income', active: true, defaultBudget: 0 },
+  { name: 'Ganancias', type: 'income', active: true, defaultBudget: 0 },
+  { name: 'Otros', type: 'income', active: true, defaultBudget: 0 },
+];
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  
+  const getInitialPeriod = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  };
+
+  const getNextSixPeriods = (startPeriod: string) => {
+    const [yearStr, monthStr] = startPeriod.split('-');
+    const periods = [];
+    for (let i = 0; i < 6; i++) {
+      const date = new Date(parseInt(yearStr), parseInt(monthStr) - 1 + i, 1);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      periods.push(`${y}-${m}`);
+    }
+    return periods;
+  };
+
+  const [currentPeriod, setCurrentPeriod] = useState<string>(getInitialPeriod());
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [sixMonthBudgets, setSixMonthBudgets] = useState<Budget[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // Load and Seed Categories once user is authenticated
+  useEffect(() => {
+    if (!user) {
+      setCategories([]);
+      return;
+    }
+    
+    const loadCategories = async () => {
+      try {
+        let list = await categoryRepo.getAll(user.id);
+        if (list.length === 0) {
+          console.log('Seeding default categories in Supabase for user:', user.id);
+          await Promise.all(
+            DEFAULT_CATEGORIES.map(cat => categoryRepo.create(user.id, cat))
+          );
+          list = await categoryRepo.getAll(user.id);
+        }
+        setCategories(list);
+      } catch (err) {
+        console.error('Error loading/seeding categories:', err);
+      }
+    };
+    loadCategories();
+  }, [user]);
+
+  // Load Transactions and Budgets when user or period changes
+  const loadData = async () => {
+    if (!user) {
+      setTransactions([]);
+      setBudgets([]);
+      setSixMonthBudgets([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const periodsToFetch = getNextSixPeriods(currentPeriod);
+      
+      const [fetchedTx, fetchedBudgets, fetchedSixMonthBudgets] = await Promise.all([
+        transactionRepo.getAllByUserId(user.id, currentPeriod),
+        budgetRepo.getAllByUserId(user.id, currentPeriod),
+        budgetRepo.getAllForPeriods(user.id, periodsToFetch)
+      ]);
+
+      // Calculate spent dynamically based on loaded transactions of this month
+      const spentByCategory: Record<string, number> = {};
+      fetchedTx.forEach(tx => {
+        if (tx.type === 'expense') {
+          spentByCategory[tx.category] = (spentByCategory[tx.category] || 0) + tx.amount;
+        }
+      });
+
+      // Map budgets and synchronize spent column for active month
+      const enrichedBudgets = fetchedBudgets.map(b => {
+        const calculatedSpent = spentByCategory[b.category] || 0;
+        if (Math.abs(b.spent - calculatedSpent) > 0.01) {
+          budgetRepo.updateSpent(b.id, calculatedSpent).catch(err => {
+            console.error('Failed to sync budget spent in background:', err);
+          });
+        }
+        return {
+          ...b,
+          spent: calculatedSpent
+        };
+      });
+
+      setTransactions(fetchedTx);
+      setBudgets(enrichedBudgets);
+      setSixMonthBudgets(fetchedSixMonthBudgets);
+    } catch (err) {
+      console.error('Error loading budgets or transactions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [user, currentPeriod]);
+
+  // Transactions Operations
+  const addTransaction = async (tx: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => {
+    if (!user) return;
+    try {
+      await transactionRepo.create({ ...tx, userId: user.id });
+      await loadData();
+    } catch (err) {
+      console.error('Error creating transaction:', err);
+      throw err;
+    }
+  };
+
+  const editTransaction = async (id: string, tx: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => {
+    if (!user) return;
+    try {
+      await transactionRepo.update(id, tx);
+      await loadData();
+    } catch (err) {
+      console.error('Error editing transaction:', err);
+      throw err;
+    }
+  };
+
+  const deleteTransaction = async (id: string) => {
+    if (!user) return;
+    try {
+      await transactionRepo.delete(id);
+      await loadData();
+    } catch (err) {
+      console.error('Error deleting transaction:', err);
+      throw err;
+    }
+  };
+
+  // Categories Operations
+  const addCategory = async (name: string, type: 'income' | 'expense') => {
+    if (!user) return;
+    const cleanName = name.trim();
+    if (!cleanName) return;
+    
+    // Prevent duplicates
+    const exists = categories.some(
+      c => c.name.toLowerCase() === cleanName.toLowerCase() && c.type === type
+    );
+    if (exists) {
+      throw new Error('La categoría ya existe');
+    }
+
+    const newCat = { name: cleanName, type, active: true, defaultBudget: 0 };
+    try {
+      await categoryRepo.create(user.id, newCat);
+      setCategories([...categories, newCat]);
+    } catch (err) {
+      console.error('Error adding category:', err);
+      throw err;
+    }
+  };
+
+  const toggleCategory = async (name: string, type: 'income' | 'expense') => {
+    if (!user) return;
+    const cat = categories.find(c => c.name.toLowerCase() === name.toLowerCase() && c.type === type);
+    if (!cat) return;
+    
+    const newActive = !cat.active;
+    try {
+      await categoryRepo.update(user.id, name, type, { active: newActive });
+      setCategories(categories.map(c => {
+        if (c.name.toLowerCase() === name.toLowerCase() && c.type === type) {
+          return { ...c, active: newActive };
+        }
+        return c;
+      }));
+    } catch (err) {
+      console.error('Error toggling category active status:', err);
+    }
+  };
+
+  const updateCategoryName = async (oldName: string, newName: string, type: 'income' | 'expense') => {
+    if (!user) return;
+    const cleanNewName = newName.trim();
+    if (!cleanNewName || cleanNewName.toLowerCase() === oldName.toLowerCase()) return;
+
+    // Check duplicate of new name
+    const exists = categories.some(
+      c => c.name.toLowerCase() === cleanNewName.toLowerCase() && c.type === type
+    );
+    if (exists) {
+      throw new Error('Ya existe una categoría con ese nombre');
+    }
+
+    try {
+      // 1. Update categories table
+      await categoryRepo.update(user.id, oldName, type, { name: cleanNewName });
+
+      // 2. Update transactions
+      await supabase
+        .from('transactions')
+        .update({ category: cleanNewName })
+        .eq('user_id', user.id)
+        .eq('category', oldName)
+        .eq('type', type);
+
+      // 3. Update budgets
+      await supabase
+        .from('budgets')
+        .update({ category: cleanNewName })
+        .eq('user_id', user.id)
+        .eq('category', oldName);
+
+      setCategories(categories.map(c => {
+        if (c.name.toLowerCase() === oldName.toLowerCase() && c.type === type) {
+          return { ...c, name: cleanNewName };
+        }
+        return c;
+      }));
+      await loadData();
+    } catch (err) {
+      console.error('Error updating references for renamed category:', err);
+      throw err;
+    }
+  };
+
+  const updateCategoryBudget = async (name: string, type: 'income' | 'expense', budget: number) => {
+    if (!user) return;
+    try {
+      await categoryRepo.update(user.id, name, type, { defaultBudget: budget });
+      setCategories(categories.map(c => {
+        if (c.name.toLowerCase() === name.toLowerCase() && c.type === type) {
+          return { ...c, defaultBudget: budget };
+        }
+        return c;
+      }));
+    } catch (err) {
+      console.error('Error updating category default budget:', err);
+      throw err;
+    }
+  };
+
+  // Budgets Operations
+  const setBudgetLimit = async (category: string, limit: number) => {
+    await setBudgetLimitForPeriod(category, currentPeriod, limit);
+  };
+
+  const setBudgetLimitForPeriod = async (category: string, period: string, limit: number) => {
+    if (!user) return;
+    try {
+      // Check in the list of loaded 6-month budgets
+      const existing = sixMonthBudgets.find(
+        b => b.category.toLowerCase() === category.toLowerCase() && b.period === period
+      );
+
+      if (existing) {
+        await budgetRepo.updateAmount(existing.id, limit);
+      } else {
+        await budgetRepo.create({
+          userId: user.id,
+          category,
+          amount: limit,
+          period
+        });
+      }
+      await loadData();
+    } catch (err) {
+      console.error(`Error setting budget limit for period ${period}:`, err);
+      throw err;
+    }
+  };
+
+  const applyBudgetTemplate = async (targetPeriod?: string) => {
+    if (!user) return;
+    const period = targetPeriod || currentPeriod;
+    const templateCats = categories.filter(c => c.type === 'expense' && c.active && c.defaultBudget > 0);
+    if (templateCats.length === 0) {
+      throw new Error('No tienes presupuestos plantilla configurados en tus categorías.');
+    }
+    try {
+      await Promise.all(
+        templateCats.map(async cat => {
+          // Check if it already exists in budgets or sixMonthBudgets for target period
+          const existing = sixMonthBudgets.find(
+            b => b.category.toLowerCase() === cat.name.toLowerCase() && b.period === period
+          ) || budgets.find(
+            b => b.category.toLowerCase() === cat.name.toLowerCase() && b.period === period
+          );
+
+          if (existing) {
+            await budgetRepo.updateAmount(existing.id, cat.defaultBudget);
+          } else {
+            await budgetRepo.create({
+              userId: user.id,
+              category: cat.name,
+              amount: cat.defaultBudget,
+              period
+            });
+          }
+        })
+      );
+      await loadData();
+    } catch (err) {
+      console.error('Error applying budget templates:', err);
+      throw err;
+    }
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        currentPeriod,
+        setCurrentPeriod,
+        transactions,
+        budgets,
+        sixMonthBudgets,
+        categories,
+        loading,
+        addTransaction,
+        editTransaction,
+        deleteTransaction,
+        addCategory,
+        toggleCategory,
+        updateCategoryName,
+        updateCategoryBudget,
+        setBudgetLimit,
+        setBudgetLimitForPeriod,
+        applyBudgetTemplate
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp debe usarse dentro de un AppProvider');
+  }
+  return context;
+};

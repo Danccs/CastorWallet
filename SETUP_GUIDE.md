@@ -110,6 +110,31 @@ create policy "Usuarios pueden ver sus propios presupuestos"
 create policy "Usuarios pueden gestionar sus propios presupuestos" 
   on public.budgets for all 
   using (auth.uid() = user_id);
+
+-- =========================================================================
+-- 5. TABLA DE CATEGORÍAS (Clasificadores de Ingresos y Egresos)
+-- =========================================================================
+create table public.categories (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  name text not null,
+  type text not null check (type in ('income', 'expense')),
+  active boolean default true not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (user_id, name, type)
+);
+
+-- Habilitar RLS en categorías
+alter table public.categories enable row level security;
+
+-- Políticas RLS para categorías
+create policy "Usuarios pueden ver sus propias categorias" 
+  on public.categories for select 
+  using (auth.uid() = user_id);
+
+create policy "Usuarios pueden gestionar sus propias categorias" 
+  on public.categories for all 
+  using (auth.uid() = user_id);
 ```
 
 ---
