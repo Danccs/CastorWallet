@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Category } from '@domain/entities/Category';
+import { alerts } from '@presentation/utils/alerts';
 import { 
   Edit2, 
   Copy
@@ -118,16 +119,20 @@ export const BudgetPlannerView: React.FC = () => {
   const handleApplyTemplateToMonth = async (period: string) => {
     const count = expenseCategories.filter(c => c.defaultBudget > 0).length;
     if (count === 0) {
-      alert('Primero debes configurar montos mayores a $0 en la pestaña de Plantillas.');
+      alerts.warning('Sin plantillas', 'Primero debes configurar montos mayores a $0 en la pestaña de Plantillas.');
       return;
     }
     const displayName = formatPeriodLong(period);
-    if (window.confirm(`¿Quieres aplicar los presupuestos de la plantilla en el mes de ${displayName}?`)) {
+    const confirmed = await alerts.confirm(
+      '¿Aplicar plantilla?',
+      `¿Quieres aplicar los presupuestos de la plantilla en el mes de ${displayName}?`
+    );
+    if (confirmed) {
       try {
         await applyBudgetTemplate(period);
-        alert(`Plantilla aplicada con éxito para ${displayName}.`);
+        alerts.success('¡Aplicado!', `Plantilla aplicada con éxito para ${displayName}.`);
       } catch (err: any) {
-        alert(err.message || 'Error al aplicar la plantilla.');
+        alerts.error('Error', err.message || 'Error al aplicar la plantilla.');
       }
     }
   };

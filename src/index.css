@@ -298,3 +298,49 @@ h1, h2, h3, h4, h5, h6 {
   padding: 20px;
   padding-bottom: 90px;
 }
+
+/* Custom SweetAlert2 styling to match CastorWallet */
+.castor-swal-popup {
+  font-family: var(--font-body) !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--card-border) !important;
+  padding: 24px !important;
+  box-shadow: 0 10px 30px rgba(22, 52, 40, 0.08) !important;
+}
+
+.castor-swal-title {
+  font-family: var(--font-display) !important;
+  font-weight: 700 !important;
+  font-size: 1.25rem !important;
+  color: var(--text-primary) !important;
+  margin-bottom: 8px !important;
+  padding: 0 !important;
+}
+
+.castor-swal-html {
+  font-size: 0.9rem !important;
+  color: var(--text-secondary) !important;
+  line-height: 1.4 !important;
+  margin: 0 0 20px 0 !important;
+}
+
+.castor-swal-actions {
+  display: flex !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin-top: 16px !important;
+}
+
+.castor-swal-btn-confirm {
+  margin: 0 !important;
+  flex: 1;
+  padding: 12px 20px !important;
+  font-size: 0.95rem !important;
+}
+
+.castor-swal-btn-cancel {
+  margin: 0 !important;
+  flex: 1;
+  padding: 12px 20px !important;
+  font-size: 0.95rem !important;
+}

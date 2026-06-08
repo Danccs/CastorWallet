@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Transaction, TransactionType } from '@domain/entities/Transaction';
+import { alerts } from '@presentation/utils/alerts';
 import { 
   ArrowLeft, 
   Search, 
@@ -82,11 +83,11 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
     e.preventDefault();
     const parsedAmount = Math.round(parseFloat(amount));
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      alert('Por favor introduce un monto válido mayor a 0');
+      alerts.warning('Monto inválido', 'Por favor introduce un monto válido mayor a 0');
       return;
     }
     if (!category) {
-      alert('Por favor selecciona una categoría');
+      alerts.warning('Falta categoría', 'Por favor selecciona una categoría');
       return;
     }
 
@@ -106,18 +107,22 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
       }
       onClose();
     } catch (err) {
-      alert('Ocurrió un error al guardar el movimiento');
+      alerts.error('Error', 'Ocurrió un error al guardar el movimiento');
     }
   };
 
   const handleDelete = async () => {
     if (!transactionToEdit) return;
-    if (window.confirm('¿Estás seguro de que deseas eliminar este movimiento?')) {
+    const confirmed = await alerts.confirmDanger(
+      '¿Eliminar movimiento?',
+      '¿Estás seguro de que deseas eliminar este movimiento? Esta acción no se puede deshacer.'
+    );
+    if (confirmed) {
       try {
         await deleteTransaction(transactionToEdit.id);
         onClose();
       } catch (err) {
-        alert('Error al eliminar el movimiento');
+        alerts.error('Error', 'Error al eliminar el movimiento');
       }
     }
   };

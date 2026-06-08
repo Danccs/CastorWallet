@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { alerts } from '@presentation/utils/alerts';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -84,12 +85,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
   };
 
   const handleApplyTemplate = async () => {
-    if (window.confirm('¿Deseas aplicar la plantilla de presupuestos en el mes actual? Esto creará o actualizará los presupuestos de las categorías activas.')) {
+    const confirmed = await alerts.confirm(
+      '¿Aplicar plantilla?',
+      '¿Deseas aplicar la plantilla de presupuestos en el mes actual? Esto creará o actualizará los presupuestos de las categorías activas.'
+    );
+    if (confirmed) {
       try {
         await applyBudgetTemplate();
-        alert('Plantilla de presupuestos aplicada correctamente para este mes.');
+        alerts.success('¡Aplicado!', 'Plantilla de presupuestos aplicada correctamente para este mes.');
       } catch (err: any) {
-        alert(err.message || 'Error al aplicar la plantilla de presupuestos.');
+        alerts.error('Error', err.message || 'Error al aplicar la plantilla de presupuestos.');
       }
     }
   };

@@ -34,6 +34,7 @@ function MainContainer() {
   const [activeTab, setActiveTab] = useState<'home' | 'budgets' | 'history' | 'categories'>('home');
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
+  const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
 
   // Initialize official Google Sign-In button
   useEffect(() => {
@@ -166,56 +167,123 @@ function MainContainer() {
         <>
           {/* Header Sticky Area */}
           <header className="header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {user.avatarUrl ? (
-                <img 
-                  src={user.avatarUrl} 
-                  alt={user.name} 
-                  style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--color-primary)' }} 
-                />
-              ) : (
-                <div style={{ 
-                  width: '36px', 
-                  height: '36px', 
-                  borderRadius: '50%', 
-                  backgroundColor: 'var(--color-primary)', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  color: '#ffffff'
-                }}>
-                  {user.name ? user.name.charAt(0) : 'U'}
-                </div>
+            {/* Avatar Button container */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  outline: 'none'
+                }}
+                title="Menú de usuario"
+              >
+                {user.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt={user.name} 
+                    style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--color-primary)' }} 
+                  />
+                ) : (
+                  <div style={{ 
+                    width: '36px', 
+                    height: '36px', 
+                    borderRadius: '50%', 
+                    backgroundColor: 'var(--color-primary)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    fontWeight: 'bold',
+                    color: '#ffffff'
+                  }}>
+                    {user.name ? user.name.charAt(0) : 'U'}
+                  </div>
+                )}
+              </button>
+
+              {/* User Dropdown Menu Popover */}
+              {showUserMenu && (
+                <>
+                  {/* Backdrop to close click outside */}
+                  <div 
+                    onClick={() => setShowUserMenu(false)}
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 95,
+                      background: 'transparent'
+                    }}
+                  />
+                  {/* Dropdown Card */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '46px',
+                    left: '0',
+                    backgroundColor: 'var(--card-bg)',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                    border: '1px solid var(--card-border)',
+                    padding: '14px',
+                    zIndex: 96,
+                    minWidth: '180px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Sesión iniciada como</span>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                      {user.name || 'Usuario'}
+                    </div>
+                    {user.email && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', wordBreak: 'break-all' }}>
+                        {user.email}
+                      </div>
+                    )}
+                    <div style={{ borderTop: '1px solid var(--bg-tertiary)', margin: '6px 0' }}></div>
+                    <button 
+                      onClick={() => {
+                        signOut();
+                        setShowUserMenu(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '8px 10px',
+                        backgroundColor: 'var(--color-danger-bg)',
+                        color: 'var(--color-danger)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        transition: 'background-color 0.2s'
+                      }}
+                    >
+                      <LogOut size={14} />
+                      Cerrar Sesión
+                    </button>
+                  </div>
+                </>
               )}
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Hola,</div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {user.name || user.email}
-                </div>
-              </div>
             </div>
 
-            <h2 style={{ fontSize: '1.2rem', letterSpacing: '-0.03em' }}>
+            {/* Centered Application Name */}
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.03em', margin: 0 }}>
               Castor<span style={{ color: 'var(--color-primary)' }}>Wallet</span>
             </h2>
 
-            <button 
-              onClick={signOut} 
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: 'var(--text-secondary)', 
-                cursor: 'pointer',
-                padding: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              title="Cerrar Sesión"
-            >
-              <LogOut size={20} />
-            </button>
+            {/* Empty balanced element to ensure center alignment */}
+            <div style={{ width: '36px' }} />
           </header>
 
           {/* Main Content Area */}

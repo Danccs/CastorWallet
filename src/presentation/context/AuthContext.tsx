@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@infrastructure/supabase/client';
 import type { User } from '@domain/entities/User';
+import { alerts } from '@presentation/utils/alerts';
 
 interface AuthContextType {
   user: User | null;
@@ -65,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
     } catch (err) {
       console.error('Error al iniciar sesión con Google:', err);
-      alert('Error al conectar con Google. Por favor, revisa la configuración.');
+      alerts.error('Error de conexión', 'Error al conectar con Google. Por favor, revisa la configuración.');
     }
   };
 
@@ -79,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
     } catch (err) {
       console.error('Error de login con ID Token:', err);
-      alert('Error al autenticar con Google. Por favor, reintenta.');
+      alerts.error('Error de autenticación', 'Error al autenticar con Google. Por favor, reintenta.');
     } finally {
       setLoading(false);
     }
