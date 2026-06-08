@@ -53,7 +53,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
   const overallProgress = totalBudgeted > 0 ? Math.min((totalExpense / totalBudgeted) * 100, 100) : 0;
 
   // 3. Category Breakdown Data
-  const expenseCategories = categories.filter(c => c.type === 'expense' && c.active);
+  const expenseCategories = categories
+    .filter(c => c.type === 'expense' && c.active)
+    .sort((a, b) => a.name.localeCompare(b.name, 'es-ES'));
   
   const categoryBreakdown = expenseCategories.map(cat => {
     const budget = budgets.find(b => b.category.toLowerCase() === cat.name.toLowerCase());
@@ -285,79 +287,97 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
               No hay categorías activas configuradas.
             </div>
           ) : (
-            categoryBreakdown.map(cat => {
-              const pct = cat.percent;
-              let barColor = 'var(--color-success)';
-              if (pct >= 90) {
-                barColor = 'var(--color-danger)';
-              } else if (pct >= 70) {
-                barColor = 'var(--color-warning)';
-              }
+            <div style={{
+              width: '100%',
+              overflowX: 'auto',
+              border: '1px solid var(--card-border)',
+              borderRadius: '16px',
+              backgroundColor: 'var(--card-bg)',
+              boxShadow: 'var(--card-shadow)',
+              WebkitOverflowScrolling: 'touch'
+            }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.85rem',
+                textAlign: 'left',
+                minWidth: '320px'
+              }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--card-border)', backgroundColor: 'var(--bg-secondary)' }}>
+                    <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-primary)' }}>Categoría</th>
+                    <th style={{ padding: '12px 10px', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'right' }}>Real</th>
+                    <th style={{ padding: '12px 10px', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'right' }}>Presupuesto</th>
+                    <th style={{ padding: '12px 10px', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center' }}>% Avance</th>
+                    <th style={{ padding: '12px 10px', width: '40px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categoryBreakdown.map(cat => {
+                    const pct = cat.percent;
+                    let progressColor = 'var(--color-success)';
+                    let progressBg = 'var(--color-success-bg)';
+                    if (pct >= 90) {
+                      progressColor = 'var(--color-danger)';
+                      progressBg = 'var(--color-danger-bg)';
+                    } else if (pct >= 70) {
+                      progressColor = 'var(--color-warning)';
+                      progressBg = 'var(--color-warning-bg)';
+                    }
 
-              return (
-                <div key={cat.name} className="card" style={{ padding: '16px', marginBottom: '0px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <div>
-                      <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                        {cat.name}
-                      </span>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        Real: <strong style={{ color: 'var(--text-primary)' }}>${cat.realSpent.toLocaleString('es-ES', { maximumFractionDigits: 0 })}</strong>
-                      </p>
-                    </div>
-
-                    <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div>
-                        {cat.budgetLimit > 0 ? (
-                          <>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                              de ${cat.budgetLimit.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
-                            </span>
-                            <p style={{ fontSize: '0.78rem', fontWeight: 600, color: barColor, marginTop: '2px' }}>
+                    return (
+                      <tr key={cat.name} style={{ borderBottom: '1px solid rgba(22, 52, 40, 0.05)' }}>
+                        <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {cat.name}
+                        </td>
+                        <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          ${cat.realSpent.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+                        </td>
+                        <td style={{ padding: '12px 10px', textAlign: 'right', color: cat.budgetLimit > 0 ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: cat.budgetLimit > 0 ? 'normal' : 'italic' }}>
+                          {cat.budgetLimit > 0 ? `$${cat.budgetLimit.toLocaleString('es-ES', { maximumFractionDigits: 0 })}` : 'Sin límite'}
+                        </td>
+                        <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                          {cat.budgetLimit > 0 ? (
+                            <span style={{
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              backgroundColor: progressBg,
+                              color: progressColor,
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              whiteSpace: 'nowrap'
+                            }}>
                               {pct.toFixed(0)}%
-                            </p>
-                          </>
-                        ) : (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            Sin límite
-                          </span>
-                        )}
-                      </div>
-                      
-                      <button 
-                        onClick={() => handleEditBudgetClick(cat.name, cat.budgetLimit)}
-                        style={{
-                          border: 'none',
-                          background: 'var(--bg-secondary)',
-                          color: 'var(--text-secondary)',
-                          borderRadius: '8px',
-                          padding: '6px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                        title="Configurar presupuesto"
-                      >
-                        <Edit2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {cat.budgetLimit > 0 && (
-                    <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ 
-                        width: `${Math.min(pct, 100)}%`, 
-                        height: '100%', 
-                        backgroundColor: barColor, 
-                        borderRadius: '3px',
-                        transition: 'width 0.4s ease'
-                      }}></div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>-</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                          <button 
+                            onClick={() => handleEditBudgetClick(cat.name, cat.budgetLimit)}
+                            style={{
+                              border: 'none',
+                              background: 'var(--bg-secondary)',
+                              color: 'var(--text-secondary)',
+                              borderRadius: '6px',
+                              padding: '6px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title="Configurar presupuesto"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </section>

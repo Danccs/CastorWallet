@@ -11,6 +11,8 @@ import { supabase } from '@infrastructure/supabase/client';
 interface AppContextType {
   currentPeriod: string; // YYYY-MM
   setCurrentPeriod: (period: string) => void;
+  budgetStartPeriod: string; // NUEVO
+  setBudgetStartPeriod: (period: string) => void; // NUEVO
   transactions: Transaction[];
   budgets: Budget[];
   sixMonthBudgets: Budget[]; // NUEVO
@@ -32,6 +34,7 @@ interface AppContextType {
   setBudgetLimit: (category: string, limit: number) => Promise<void>;
   setBudgetLimitForPeriod: (category: string, period: string, limit: number) => Promise<void>; // NUEVO
   applyBudgetTemplate: (targetPeriod?: string) => Promise<void>; // MODIFICADO
+  copyBudgetPeriod: (sourcePeriod: string, targetPeriod: string) => Promise<void>; // NUEVO
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -97,6 +100,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const [currentPeriod, setCurrentPeriod] = useState<string>(getInitialPeriod());
+  const [budgetStartPeriod, setBudgetStartPeriod] = useState<string>(getInitialPeriod()); // NUEVO
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [sixMonthBudgets, setSixMonthBudgets] = useState<Budget[]>([]);
@@ -139,7 +143,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setLoading(true);
     try {
-      const periodsToFetch = getNextSixPeriods(currentPeriod);
+      const periodsToFetch = getNextSixPeriods(budgetStartPeriod);
       
       const [fetchedTx, fetchedBudgets, fetchedSixMonthBudgets] = await Promise.all([
         transactionRepo.getAllByUserId(user.id, currentPeriod),
@@ -181,7 +185,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     loadData();
-  }, [user, currentPeriod]);
+  }, [user, currentPeriod, budgetStartPeriod]);
 
   // Transactions Operations
   const addTransaction = async (tx: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => {
@@ -359,13 +363,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw new Error('No tienes presupuestos plantilla configurados en tus categorías.');
     }
     try {
+      const existingBudgets = await budgetRepo.getAllByUserId(user.id, period);
+
       await Promise.all(
         templateCats.map(async cat => {
-          // Check if it already exists in budgets or sixMonthBudgets for target period
-          const existing = sixMonthBudgets.find(
-            b => b.category.toLowerCase() === cat.name.toLowerCase() && b.period === period
-          ) || budgets.find(
-            b => b.category.toLowerCase() === cat.name.toLowerCase() && b.period === period
+          const existing = existingBudgets.find(
+            b => b.category.toLowerCase() === cat.name.toLowerCase()
           );
 
           if (existing) {
@@ -387,11 +390,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const copyBudgetPeriod = async (sourcePeriod: string, targetPeriod: string) => {
+    if (!user) return;
+    try {
+      const [sourceBudgets, targetBudgets] = await Promise.all([
+        budgetRepo.getAllByUserId(user.id, sourcePeriod),
+        budgetRepo.getAllByUserId(user.id, targetPeriod)
+      ]);
+
+      const operations: Promise<any>[] = [];
+      const sourceMap = new Map(sourceBudgets.map(b => [b.category.toLowerCase(), b]));
+      const targetMap = new Map(targetBudgets.map(b => [b.category.toLowerCase(), b]));
+
+      for (const sourceBudget of sourceBudgets) {
+        if (sourceBudget.amount <= 0) continue;
+        const existingTarget = targetMap.get(sourceBudget.category.toLowerCase());
+        if (existingTarget) {
+          if (existingTarget.amount !== sourceBudget.amount) {
+            operations.push(budgetRepo.updateAmount(existingTarget.id, sourceBudget.amount));
+          }
+        } else {
+          operations.push(budgetRepo.create({
+            userId: user.id,
+            category: sourceBudget.category,
+            amount: sourceBudget.amount,
+            period: targetPeriod
+          }));
+        }
+      }
+
+      for (const targetBudget of targetBudgets) {
+        const sourceBudget = sourceMap.get(targetBudget.category.toLowerCase());
+        if (!sourceBudget || sourceBudget.amount <= 0) {
+          operations.push(budgetRepo.delete(targetBudget.id));
+        }
+      }
+
+      await Promise.all(operations);
+      await loadData();
+    } catch (err) {
+      console.error(`Error copying budget from ${sourcePeriod} to ${targetPeriod}:`, err);
+      throw err;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
         currentPeriod,
         setCurrentPeriod,
+        budgetStartPeriod,
+        setBudgetStartPeriod,
         transactions,
         budgets,
         sixMonthBudgets,
@@ -406,7 +455,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCategoryBudget,
         setBudgetLimit,
         setBudgetLimitForPeriod,
-        applyBudgetTemplate
+        applyBudgetTemplate,
+        copyBudgetPeriod
       }}
     >
       {children}

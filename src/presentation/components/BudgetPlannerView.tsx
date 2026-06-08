@@ -1,39 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Category } from '@domain/entities/Category';
 import { alerts } from '@presentation/utils/alerts';
 import { 
   Edit2, 
-  Copy
+  Copy,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  ArrowRight
 } from 'lucide-react';
 
 export const BudgetPlannerView: React.FC = () => {
   const { 
-    currentPeriod, 
+    budgetStartPeriod,
+    setBudgetStartPeriod,
     categories, 
     sixMonthBudgets, 
-    updateCategoryBudget, 
     setBudgetLimitForPeriod, 
-    applyBudgetTemplate 
+    copyBudgetPeriod
   } = useApp();
-
-  const [activeSubTab, setActiveSubTab] = useState<'template' | 'planning'>('planning');
-
-  // Modal Editing Template Budget
-  const [editingTemplateCat, setEditingTemplateCat] = useState<Category | null>(null);
-  const [templateBudgetVal, setTemplateBudgetVal] = useState<string>('');
-  const [templateErrorMsg, setTemplateErrorMsg] = useState<string>('');
 
   // Modal Editing Month Specific Budget
   const [editingCell, setEditingCell] = useState<{ category: string; period: string; currentAmount: number } | null>(null);
   const [cellBudgetVal, setCellBudgetVal] = useState<string>('');
   const [cellErrorMsg, setCellErrorMsg] = useState<string>('');
 
-  const expenseCategories = categories.filter(c => c.type === 'expense' && c.active);
+  // Modal Copy Budget Month
+  const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
+  const [copySourcePeriod, setCopySourcePeriod] = useState<string>('');
+  const [copyTargetPeriod, setCopyTargetPeriod] = useState<string>('');
+  const [copyLoading, setCopyLoading] = useState<boolean>(false);
+  const [copyErrorMsg, setCopyErrorMsg] = useState<string>('');
 
-  // Generate the next 6 periods starting from currentPeriod
+  const expenseCategories = categories
+    .filter(c => c.type === 'expense' && c.active)
+    .sort((a, b) => a.name.localeCompare(b.name, 'es-ES'));
+
+  const getActualCurrentPeriod = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  };
+
+  // Reset to actual current month on mount
+  useEffect(() => {
+    setBudgetStartPeriod(getActualCurrentPeriod());
+  }, []);
+
+  // Shift the start period of the 6-month budget grid
+  const changeBudgetMonth = (offset: number) => {
+    const [yearStr, monthStr] = budgetStartPeriod.split('-');
+    const date = new Date(parseInt(yearStr), parseInt(monthStr) - 1 + offset, 1);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    setBudgetStartPeriod(`${y}-${m}`);
+  };
+
+  // Generate the next 6 periods starting from budgetStartPeriod
   const getNextSixPeriods = () => {
-    const [yearStr, monthStr] = currentPeriod.split('-');
+    const [yearStr, monthStr] = budgetStartPeriod.split('-');
     const periods = [];
     for (let i = 0; i < 6; i++) {
       const date = new Date(parseInt(yearStr), parseInt(monthStr) - 1 + i, 1);
@@ -47,41 +74,74 @@ export const BudgetPlannerView: React.FC = () => {
   const nextSixPeriods = getNextSixPeriods();
 
   const formatPeriodShort = (p: string) => {
+    if (!p) return '';
     const [year, month] = p.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-    // e.g. "Jun 26"
     return date.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
   };
 
   const formatPeriodLong = (p: string) => {
+    if (!p) return '';
     const [year, month] = p.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
     return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
   };
 
-  // 1. Template Budget Actions
-  const handleStartEditTemplate = (cat: Category) => {
-    setEditingTemplateCat(cat);
-    setTemplateBudgetVal(cat.defaultBudget > 0 ? cat.defaultBudget.toString() : '0');
-    setTemplateErrorMsg('');
+  // 1. Copy Budget Period Actions
+  const getCopyPeriodOptions = () => {
+    const options = [];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    // 12 months back to 12 months forward (total 25 months)
+    for (let i = -12; i <= 12; i++) {
+      const date = new Date(currentYear, currentMonth + i, 1);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const val = `${y}-${m}`;
+      options.push({
+        value: val,
+        label: date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+      });
+    }
+    return options;
   };
 
-  const handleSaveTemplate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTemplateCat) return;
-    setTemplateErrorMsg('');
+  const copyPeriodOptions = getCopyPeriodOptions();
 
-    const parsed = parseFloat(templateBudgetVal);
-    if (isNaN(parsed) || parsed < 0) {
-      setTemplateErrorMsg('Introduce un presupuesto plantilla válido (>= 0)');
+  const handleStartCopy = () => {
+    setCopySourcePeriod(budgetStartPeriod);
+    
+    // Set target period to next month by default
+    const [yearStr, monthStr] = budgetStartPeriod.split('-');
+    const date = new Date(parseInt(yearStr), parseInt(monthStr), 1);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    setCopyTargetPeriod(`${y}-${m}`);
+    
+    setCopyErrorMsg('');
+    setShowCopyModal(true);
+  };
+
+  const handleExecuteCopy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!copySourcePeriod || !copyTargetPeriod) return;
+    if (copySourcePeriod === copyTargetPeriod) {
+      setCopyErrorMsg('El mes de origen y destino no pueden ser iguales.');
       return;
     }
-
+    
+    setCopyLoading(true);
+    setCopyErrorMsg('');
     try {
-      await updateCategoryBudget(editingTemplateCat.name, editingTemplateCat.type, parsed);
-      setEditingTemplateCat(null);
+      await copyBudgetPeriod(copySourcePeriod, copyTargetPeriod);
+      setShowCopyModal(false);
+      alerts.success('¡Copiado!', `Presupuestos copiados con éxito a ${formatPeriodLong(copyTargetPeriod)}.`);
     } catch (err: any) {
-      setTemplateErrorMsg(err.message || 'Error al guardar la plantilla');
+      setCopyErrorMsg(err.message || 'Error al copiar los presupuestos.');
+    } finally {
+      setCopyLoading(false);
     }
   };
 
@@ -115,28 +175,6 @@ export const BudgetPlannerView: React.FC = () => {
     }
   };
 
-  // 3. Quick Seeding Actions
-  const handleApplyTemplateToMonth = async (period: string) => {
-    const count = expenseCategories.filter(c => c.defaultBudget > 0).length;
-    if (count === 0) {
-      alerts.warning('Sin plantillas', 'Primero debes configurar montos mayores a $0 en la pestaña de Plantillas.');
-      return;
-    }
-    const displayName = formatPeriodLong(period);
-    const confirmed = await alerts.confirm(
-      '¿Aplicar plantilla?',
-      `¿Quieres aplicar los presupuestos de la plantilla en el mes de ${displayName}?`
-    );
-    if (confirmed) {
-      try {
-        await applyBudgetTemplate(period);
-        alerts.success('¡Aplicado!', `Plantilla aplicada con éxito para ${displayName}.`);
-      } catch (err: any) {
-        alerts.error('Error', err.message || 'Error al aplicar la plantilla.');
-      }
-    }
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
@@ -150,141 +188,51 @@ export const BudgetPlannerView: React.FC = () => {
         </p>
       </div>
 
-      {/* Navigation Sub Tabs */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '8px',
-        backgroundColor: 'var(--bg-secondary)',
-        padding: '4px',
-        borderRadius: '12px'
-      }}>
-        <button
-          onClick={() => setActiveSubTab('planning')}
-          style={{
-            border: 'none',
-            padding: '10px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '0.88rem',
-            fontWeight: 600,
-            background: activeSubTab === 'planning' ? 'var(--color-primary)' : 'transparent',
-            color: activeSubTab === 'planning' ? '#ffffff' : 'var(--text-secondary)',
-            boxShadow: activeSubTab === 'planning' ? '0 4px 10px rgba(22, 52, 40, 0.15)' : 'none',
-            transition: 'all 0.2s'
-          }}
-        >
-          Vista 6 Meses
-        </button>
-        <button
-          onClick={() => setActiveSubTab('template')}
-          style={{
-            border: 'none',
-            padding: '10px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '0.88rem',
-            fontWeight: 600,
-            background: activeSubTab === 'template' ? 'var(--color-primary)' : 'transparent',
-            color: activeSubTab === 'template' ? '#ffffff' : 'var(--text-secondary)',
-            boxShadow: activeSubTab === 'template' ? '0 4px 10px rgba(22, 52, 40, 0.15)' : 'none',
-            transition: 'all 0.2s'
-          }}
-        >
-          Plantilla Presupuesto
-        </button>
-      </div>
-
-      {/* Content Rendering based on Tab */}
-      {activeSubTab === 'template' ? (
-        
-        /* 1. Template Setup View */
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div className="card" style={{ padding: '16px', backgroundColor: 'var(--color-primary-hover)', color: '#ffffff', border: 'none' }}>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '4px', color: '#ffffff' }}>¿Qué es el Presupuesto Plantilla?</h3>
-            <p style={{ fontSize: '0.78rem', lineHeight: 1.4, opacity: 0.9 }}>
-              Define montos de gastos estándar por categoría. Luego podrás duplicar y aplicar estos límites en cualquier mes con un solo clic.
-            </p>
-          </div>
-
-          {expenseCategories.map(cat => (
-            <div 
-              key={cat.name} 
-              className="card"
+      {/* 6-Month Planning Grid View */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '8px' }}>
+            <button
+              onClick={() => setBudgetStartPeriod(getActualCurrentPeriod())}
               style={{
+                border: '1px solid var(--card-border)',
+                backgroundColor: 'var(--bg-secondary)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
                 display: 'flex',
-                justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '12px 16px',
-                marginBottom: '0px'
+                gap: '4px'
               }}
             >
-              <div>
-                <span style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                  {cat.name}
-                </span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Límite estándar:{' '}
-                  <strong style={{ color: cat.defaultBudget > 0 ? 'var(--color-success)' : 'var(--color-muted)' }}>
-                    {cat.defaultBudget > 0 ? `$${cat.defaultBudget.toLocaleString('es-ES', { maximumFractionDigits: 0 })}` : 'Sin definir'}
-                  </strong>
-                </p>
-              </div>
-
-              <button
-                onClick={() => handleStartEditTemplate(cat)}
-                style={{
-                  border: 'none',
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-secondary)',
-                  borderRadius: '6px',
-                  padding: '8px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title="Editar límite plantilla"
-              >
-                <Edit2 size={14} />
-              </button>
-            </div>
-          ))}
-        </section>
-        
-      ) : (
-        
-        /* 2. 6-Month Planning Grid View */
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          {/* Quick apply header controls */}
-          <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-              <Copy size={16} />
-              <h3 style={{ fontSize: '0.85rem', fontWeight: 700 }}>Duplicar Plantilla en Mes Específico</h3>
-            </div>
+              <Calendar size={12} />
+              Mes Actual
+            </button>
             
-            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '6px' }} className="no-scrollbar">
-              {nextSixPeriods.map(period => (
-                <button
-                  key={period}
-                  onClick={() => handleApplyTemplateToMonth(period)}
-                  style={{
-                    border: '1px solid var(--card-border)',
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderRadius: '8px',
-                    padding: '6px 12px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  Aplicar en {formatPeriodShort(period)}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={handleStartCopy}
+              style={{
+                border: 'none',
+                backgroundColor: 'var(--color-primary)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: '0 2px 6px rgba(22, 52, 40, 0.15)'
+              }}
+            >
+              <Copy size={12} />
+              Copiar Mes
+            </button>
           </div>
 
           {/* Planning Grid Table Container with horizontal scroll */}
@@ -306,7 +254,45 @@ export const BudgetPlannerView: React.FC = () => {
             }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)', backgroundColor: 'var(--bg-secondary)' }}>
-                  <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-primary)' }}>Categoría</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-primary)', minWidth: '150px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <span>Categoría</span>
+                      <div style={{ display: 'inline-flex', gap: '4px' }}>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); changeBudgetMonth(-1); }}
+                          style={{
+                            border: 'none',
+                            backgroundColor: 'rgba(255,255,255,0.4)',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
+                            cursor: 'pointer',
+                            color: 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="Retroceder 1 mes"
+                        >
+                          <ChevronLeft size={12} />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); changeBudgetMonth(1); }}
+                          style={{
+                            border: 'none',
+                            backgroundColor: 'rgba(255,255,255,0.4)',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
+                            cursor: 'pointer',
+                            color: 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="Avanzar 1 mes"
+                        >
+                          <ChevronRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </th>
                   {nextSixPeriods.map(p => (
                     <th 
                       key={p} 
@@ -367,6 +353,36 @@ export const BudgetPlannerView: React.FC = () => {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr style={{ borderTop: '2px double var(--card-border)', backgroundColor: 'var(--bg-secondary)' }}>
+                  <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Total
+                  </td>
+                  {nextSixPeriods.map(period => {
+                    const totalForPeriod = expenseCategories.reduce((sum, cat) => {
+                      const budget = sixMonthBudgets.find(
+                        b => b.category.toLowerCase() === cat.name.toLowerCase() && b.period === period
+                      );
+                      return sum + (budget ? budget.amount : 0);
+                    }, 0);
+
+                    return (
+                      <td 
+                        key={`total-${period}`}
+                        style={{ 
+                          padding: '12px 10px',
+                          textAlign: 'center',
+                          color: 'var(--color-primary)',
+                          fontWeight: 700,
+                          fontSize: '0.82rem'
+                        }}
+                      >
+                        {totalForPeriod > 0 ? `$${totalForPeriod.toLocaleString('es-ES', { maximumFractionDigits: 0 })}` : '$0'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tfoot>
             </table>
           </div>
 
@@ -374,78 +390,6 @@ export const BudgetPlannerView: React.FC = () => {
             * Haz clic en cualquier celda para definir o editar el límite de ese mes específico.
           </div>
         </section>
-      )}
-
-      {/* Edit Template Budget Modal */}
-      {editingTemplateCat && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          zIndex: 300,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }}>
-          <div className="card" style={{
-            width: '100%',
-            maxWidth: '320px',
-            backgroundColor: 'var(--card-bg)',
-            padding: '24px',
-            borderRadius: '16px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
-          }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '4px' }}>Presupuesto Plantilla</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Define el monto por defecto mensual para <strong>{editingTemplateCat.name}</strong>.
-            </p>
-            
-            <form onSubmit={handleSaveTemplate}>
-              <div className="form-group">
-                <label className="form-label">Límite por Defecto ($)</label>
-                <input 
-                  type="number" 
-                  step="1"
-                  className="form-input"
-                  placeholder="Ej: 300"
-                  value={templateBudgetVal}
-                  onChange={(e) => setTemplateBudgetVal(e.target.value)}
-                  autoFocus
-                  required
-                />
-              </div>
-              
-              {templateErrorMsg && (
-                <p style={{ color: 'var(--color-danger)', fontSize: '0.75rem', marginBottom: '10px', fontWeight: 500 }}>
-                  {templateErrorMsg}
-                </p>
-              )}
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setEditingTemplateCat(null)}
-                  style={{ padding: '10px', fontSize: '0.9rem' }}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  style={{ padding: '10px', fontSize: '0.9rem' }}
-                >
-                  Guardar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Edit Month Specific Cell Budget Modal */}
       {editingCell && (
@@ -512,6 +456,123 @@ export const BudgetPlannerView: React.FC = () => {
                   style={{ padding: '10px', fontSize: '0.9rem' }}
                 >
                   Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Copy Month Budget Modal */}
+      {showCopyModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          zIndex: 300,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div className="card" style={{
+            width: '100%',
+            maxWidth: '350px',
+            backgroundColor: 'var(--card-bg)',
+            padding: '24px',
+            borderRadius: '16px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+          }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '4px' }}>Copiar Presupuesto</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+              Duplica todos los montos de un mes hacia otro mes destino.
+            </p>
+            
+            <form onSubmit={handleExecuteCopy}>
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label className="form-label">Mes de Origen</label>
+                <select
+                  className="form-input"
+                  value={copySourcePeriod}
+                  onChange={(e) => setCopySourcePeriod(e.target.value)}
+                  style={{ textTransform: 'capitalize' }}
+                  required
+                >
+                  {copyPeriodOptions.map(opt => (
+                    <option key={`src-${opt.value}`} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)', margin: '4px 0' }}>
+                <ArrowRight size={18} style={{ transform: 'rotate(90deg)' }} />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label">Mes de Destino</label>
+                <select
+                  className="form-input"
+                  value={copyTargetPeriod}
+                  onChange={(e) => setCopyTargetPeriod(e.target.value)}
+                  style={{ textTransform: 'capitalize' }}
+                  required
+                >
+                  {copyPeriodOptions.map(opt => (
+                    <option key={`target-${opt.value}`} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {copyErrorMsg && (
+                <p style={{ color: 'var(--color-danger)', fontSize: '0.75rem', marginBottom: '12px', fontWeight: 500 }}>
+                  {copyErrorMsg}
+                </p>
+              )}
+
+              <div style={{ 
+                backgroundColor: 'var(--color-danger-bg)', 
+                color: 'var(--color-danger)', 
+                padding: '10px 12px', 
+                borderRadius: '8px', 
+                fontSize: '0.75rem',
+                lineHeight: '1.4',
+                marginBottom: '16px',
+                fontWeight: 500
+              }}>
+                <strong>¡Atención!</strong> Se sobrescribirán los límites del mes destino. Los presupuestos que existan en el destino y no en el origen serán eliminados.
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowCopyModal(false)}
+                  disabled={copyLoading}
+                  style={{ padding: '10px', fontSize: '0.9rem' }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  disabled={copyLoading}
+                  style={{ 
+                    padding: '10px', 
+                    fontSize: '0.9rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {copyLoading ? 'Copiando...' : 'Copiar'}
                 </button>
               </div>
             </form>

@@ -23,12 +23,14 @@ export const CategoryManagerView: React.FC = () => {
   const [editNameVal, setEditNameVal] = useState<string>('');
   const [editErrorMsg, setEditErrorMsg] = useState<string>('');
 
-  // Filter categories
-  const filteredCategories = categories.filter(c => {
-    const matchesTab = c.type === activeTab;
-    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesTab && matchesSearch;
-  });
+  // Filter and sort categories alphabetically
+  const filteredCategories = categories
+    .filter(c => {
+      const matchesTab = c.type === activeTab;
+      const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesTab && matchesSearch;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'es-ES'));
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
