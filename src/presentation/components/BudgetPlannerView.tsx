@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import type { Category } from '@domain/entities/Category';
 import { alerts } from '@presentation/utils/alerts';
 import { 
-  Edit2, 
   Copy,
   ChevronLeft,
   ChevronRight,
