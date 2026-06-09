@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@presentation/context/AuthContext';
 import { AppProvider, useApp } from '@presentation/context/AppContext';
-import { 
-  Wallet, 
-  History as HistoryIcon, 
-  Tag as TagIcon, 
+import {
+  Wallet,
+  History as HistoryIcon,
+  Tag as TagIcon,
   LogOut,
   TrendingUp
 } from 'lucide-react';
@@ -30,7 +30,7 @@ export default function App() {
 function MainContainer() {
   const { user, loading, signInWithGoogle, signInWithGoogleToken, signOut } = useAuth();
   const { loading: loadingApp } = useApp();
-  
+
   const [activeTab, setActiveTab] = useState<'home' | 'budgets' | 'history' | 'categories'>('home');
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
@@ -50,12 +50,12 @@ function MainContainer() {
 
         google.accounts.id.renderButton(
           document.getElementById('google-signin-btn'),
-          { 
-            theme: 'filled_blue', 
-            size: 'large', 
-            text: 'signin_with', 
-            shape: 'pill', 
-            width: 300 
+          {
+            theme: 'filled_blue',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'pill',
+            width: 300
           }
         );
 
@@ -77,7 +77,7 @@ function MainContainer() {
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }}></div>
-        <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)', fontSize: '0.9rem' }}>Cargando CastorWallet...</p>
+        <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)', fontSize: '0.9rem' }}>Cargando Castor Wallet...</p>
         <style>{`
           @keyframes spin {
             to { transform: rotate(360deg); }
@@ -90,18 +90,18 @@ function MainContainer() {
   // LOGIN SCREEN (Premium Dark Mode)
   if (!user) {
     return (
-      <div className="screen" style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        justifyContent: 'space-between', 
-        height: '100%', 
-        padding: '40px 24px' 
+      <div className="screen" style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        height: '100%',
+        padding: '40px 24px'
       }}>
         {/* Brand / Logo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '60px' }}>
-          <img 
-            src="/logo.png" 
-            alt="CastorWallet Logo" 
+          <img
+            src="/logo.png"
+            alt="CastorWallet Logo"
             style={{
               width: '90px',
               height: '90px',
@@ -109,10 +109,10 @@ function MainContainer() {
               boxShadow: '0 8px 24px rgba(22, 52, 40, 0.12)',
               marginBottom: '20px',
               objectFit: 'cover'
-            }} 
+            }}
           />
           <h1 style={{ fontSize: '2.5rem', fontWeight: 700, letterSpacing: '-0.05em', marginBottom: '8px' }}>
-            Castor<span style={{ color: 'var(--color-primary)' }}>Wallet</span>
+            Castor<span style={{ color: 'var(--color-primary)' }}> Wallet</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', textAlign: 'center', fontSize: '0.95rem', maxWidth: '280px', lineHeight: '1.4' }}>
             Gestiona tu presupuesto y finanzas personales de forma simple, rápida y móvil.
@@ -124,21 +124,21 @@ function MainContainer() {
           <div style={{ display: 'flex', justifyContent: 'center', width: '100%', minHeight: '40px' }}>
             <div id="google-signin-btn"></div>
           </div>
-          
-          <button 
-            className="btn btn-secondary" 
-            onClick={signInWithGoogle} 
-            style={{ 
-              height: '42px', 
-              fontSize: '0.85rem', 
-              padding: '6px 12px', 
+
+          <button
+            className="btn btn-secondary"
+            onClick={signInWithGoogle}
+            style={{
+              height: '42px',
+              fontSize: '0.85rem',
+              padding: '6px 12px',
               borderRadius: '12px',
               width: '300px'
             }}
           >
             Entrar mediante redirección (Alternativo)
           </button>
-          
+
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', lineHeight: '1.4', width: '100%', maxWidth: '300px', marginTop: '8px' }}>
             Al registrarte aceptas que esta aplicación almacena tus preferencias locales y datos de sesión de Google Auth de forma segura en Supabase.
           </div>
@@ -156,8 +156,8 @@ function MainContainer() {
   return (
     <>
       {showForm ? (
-        <TransactionFormView 
-          transactionToEdit={editingTransaction} 
+        <TransactionFormView
+          transactionToEdit={editingTransaction}
           onClose={() => {
             setShowForm(false);
             setEditingTransaction(undefined);
@@ -183,19 +183,19 @@ function MainContainer() {
                 title="Menú de usuario"
               >
                 {user.avatarUrl ? (
-                  <img 
-                    src={user.avatarUrl} 
-                    alt={user.name} 
-                    style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--color-primary)' }} 
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--color-primary)' }}
                   />
                 ) : (
-                  <div style={{ 
-                    width: '36px', 
-                    height: '36px', 
-                    borderRadius: '50%', 
-                    backgroundColor: 'var(--color-primary)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 'bold',
                     color: '#ffffff'
@@ -209,7 +209,7 @@ function MainContainer() {
               {showUserMenu && (
                 <>
                   {/* Backdrop to close click outside */}
-                  <div 
+                  <div
                     onClick={() => setShowUserMenu(false)}
                     style={{
                       position: 'fixed',
@@ -247,7 +247,7 @@ function MainContainer() {
                       </div>
                     )}
                     <div style={{ borderTop: '1px solid var(--bg-tertiary)', margin: '6px 0' }}></div>
-                    <button 
+                    <button
                       onClick={() => {
                         signOut();
                         setShowUserMenu(false);
@@ -279,7 +279,7 @@ function MainContainer() {
 
             {/* Centered Application Name */}
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.03em', margin: 0 }}>
-              Castor<span style={{ color: 'var(--color-primary)' }}>Wallet</span>
+              Castor<span style={{ color: 'var(--color-primary)' }}> Wallet</span>
             </h2>
 
             {/* Empty balanced element to ensure center alignment */}
@@ -325,28 +325,28 @@ function MainContainer() {
 
           {/* Navigation Bottom Bar */}
           <nav className="nav-bar" style={{ padding: '0 4px', gap: '2px' }}>
-            <button 
+            <button
               className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
               onClick={() => setActiveTab('home')}
             >
               <Wallet size={18} />
               <span style={{ fontSize: '0.7rem' }}>Inicio</span>
             </button>
-            <button 
+            <button
               className={`nav-item ${activeTab === 'budgets' ? 'active' : ''}`}
               onClick={() => setActiveTab('budgets')}
             >
               <TrendingUp size={18} />
               <span style={{ fontSize: '0.7rem' }}>Presupuestos</span>
             </button>
-            <button 
+            <button
               className={`nav-item ${activeTab === 'history' ? 'active' : ''}`}
               onClick={() => setActiveTab('history')}
             >
               <HistoryIcon size={18} />
               <span style={{ fontSize: '0.7rem' }}>Historial</span>
             </button>
-            <button 
+            <button
               className={`nav-item ${activeTab === 'categories' ? 'active' : ''}`}
               onClick={() => setActiveTab('categories')}
             >
