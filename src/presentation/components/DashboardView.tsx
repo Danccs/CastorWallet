@@ -87,7 +87,7 @@ export const DashboardView: React.FC = () => {
 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       
       {/* Month Selector */}
       <section style={{
@@ -95,7 +95,7 @@ export const DashboardView: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: 'var(--card-bg)',
-        padding: '8px 16px',
+        padding: '6px 12px',
         borderRadius: '999px',
         border: '1px solid var(--card-border)',
         boxShadow: 'var(--card-shadow)'
@@ -154,7 +154,7 @@ export const DashboardView: React.FC = () => {
         border: 'none',
         position: 'relative',
         overflow: 'hidden',
-        padding: '24px'
+        padding: '16px'
       }}>
         {/* Glow ambient background */}
         <div style={{
@@ -193,7 +193,7 @@ export const DashboardView: React.FC = () => {
 
         {/* Income and Liquid Balance breakdown */}
         <div style={{
-          marginTop: '20px',
+          marginTop: '12px',
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '16px'
@@ -220,8 +220,8 @@ export const DashboardView: React.FC = () => {
 
         {/* Inner dividers for Budgeted and Remaining */}
         <div style={{
-          marginTop: '20px',
-          paddingTop: '16px',
+          marginTop: '12px',
+          paddingTop: '12px',
           borderTop: '1px solid rgba(255, 255, 255, 0.15)',
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -251,7 +251,7 @@ export const DashboardView: React.FC = () => {
 
         {/* Global Progress Bar */}
         {totalBudgeted > 0 && (
-          <div style={{ marginTop: '16px' }}>
+          <div style={{ marginTop: '12px' }}>
             <div style={{ width: '100%', height: '8px', backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{ 
                 width: `${overallProgress}%`, 
