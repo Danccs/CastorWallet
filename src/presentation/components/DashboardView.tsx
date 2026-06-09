@@ -3,16 +3,11 @@ import { useApp } from '../context/AppContext';
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Plus, 
   TrendingDown, 
   Edit2
 } from 'lucide-react';
 
-interface DashboardViewProps {
-  onAddClick: () => void;
-}
-
-export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
+export const DashboardView: React.FC = () => {
   const { 
     currentPeriod, 
     setCurrentPeriod, 
@@ -446,33 +441,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
         </div>
       )}
 
-      {/* Floating Action Button (FAB) */}
-      <button 
-        onClick={onAddClick}
-        style={{
-          position: 'fixed',
-          right: '24px',
-          bottom: '90px',
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          backgroundColor: 'var(--color-primary)',
-          color: '#ffffff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          border: 'none',
-          boxShadow: '0 4px 16px rgba(22, 52, 40, 0.3)',
-          cursor: 'pointer',
-          zIndex: 90,
-          transition: 'transform 0.15s ease'
-        }}
-        className="fab-btn"
-        onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.92)'}
-        onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        <Plus size={24} />
-      </button>
+
     </div>
   );
 };
