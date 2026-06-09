@@ -6,7 +6,8 @@ import {
   History as HistoryIcon,
   Tag as TagIcon,
   LogOut,
-  TrendingUp
+  TrendingUp,
+  Plus
 } from 'lucide-react';
 import { DashboardView } from '@presentation/components/DashboardView';
 import { HistoryView } from '@presentation/components/HistoryView';
@@ -29,7 +30,7 @@ export default function App() {
 // Inner container
 function MainContainer() {
   const { user, loading, signInWithGoogle, signInWithGoogleToken, signOut } = useAuth();
-  const { loading: loadingApp } = useApp();
+  const { loading: loadingApp, categories } = useApp();
 
   const [activeTab, setActiveTab] = useState<'home' | 'budgets' | 'history' | 'categories'>('home');
   const [showForm, setShowForm] = useState<boolean>(false);
@@ -282,13 +283,66 @@ function MainContainer() {
               Castor<span style={{ color: 'var(--color-primary)' }}> Wallet</span>
             </h2>
 
-            {/* Empty balanced element to ensure center alignment */}
-            <div style={{ width: '36px' }} />
+            {/* "+" Button to register new transaction */}
+            <button
+              onClick={() => setShowForm(true)}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--color-primary)',
+                color: '#ffffff',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(22, 52, 40, 0.15)',
+                transition: 'transform 0.1s ease',
+                padding: 0,
+                outline: 'none'
+              }}
+              title="Registrar movimiento"
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <Plus size={18} />
+            </button>
           </header>
 
           {/* Main Content Area */}
-          <main className="screen">
-            {loadingApp ? (
+          <main className="screen" style={{ position: 'relative' }}>
+            {/* Subtle background syncing overlay indicator */}
+            {loadingApp && categories.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '8px',
+                right: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                zIndex: 150,
+                backgroundColor: 'var(--card-bg)',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                fontSize: '0.7rem',
+                color: 'var(--text-secondary)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                border: '1px solid var(--card-border)'
+              }}>
+                <div className="spinner" style={{
+                  width: '10px',
+                  height: '10px',
+                  border: '1.5px solid rgba(129, 140, 248, 0.2)',
+                  borderTopColor: 'var(--color-primary)',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                Sincronizando...
+              </div>
+            )}
+
+            {categories.length === 0 && loadingApp ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '12px' }}>
                 <div className="spinner" style={{
                   width: '28px',
@@ -299,16 +353,11 @@ function MainContainer() {
                   animation: 'spin 1s linear infinite'
                 }}></div>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'var(--font-display)' }}>Sincronizando datos...</p>
-                <style>{`
-                  @keyframes spin {
-                    to { transform: rotate(360deg); }
-                  }
-                `}</style>
               </div>
             ) : (
               <>
                 {activeTab === 'home' && (
-                  <DashboardView onAddClick={() => setShowForm(true)} />
+                  <DashboardView />
                 )}
                 {activeTab === 'budgets' && (
                   <BudgetPlannerView />
@@ -321,6 +370,12 @@ function MainContainer() {
                 )}
               </>
             )}
+
+            <style>{`
+              @keyframes spin {
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
           </main>
 
           {/* Navigation Bottom Bar */}
