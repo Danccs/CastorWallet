@@ -81,6 +81,11 @@ create policy "Usuarios pueden insertar sus propias transacciones"
   on public.transactions for insert 
   with check (auth.uid() = user_id);
 
+create policy "Usuarios pueden actualizar sus propias transacciones" 
+  on public.transactions for update 
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 create policy "Usuarios pueden eliminar sus propias transacciones" 
   on public.transactions for delete 
   using (auth.uid() = user_id);

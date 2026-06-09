@@ -33,7 +33,6 @@ interface AppContextType {
   // Budget operations
   setBudgetLimit: (category: string, limit: number) => Promise<void>;
   setBudgetLimitForPeriod: (category: string, period: string, limit: number) => Promise<void>; // NUEVO
-  applyBudgetTemplate: (targetPeriod?: string) => Promise<void>; // MODIFICADO
   copyBudgetPeriod: (sourcePeriod: string, targetPeriod: string) => Promise<void>; // NUEVO
 }
 
@@ -355,40 +354,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const applyBudgetTemplate = async (targetPeriod?: string) => {
-    if (!user) return;
-    const period = targetPeriod || currentPeriod;
-    const templateCats = categories.filter(c => c.type === 'expense' && c.active && c.defaultBudget > 0);
-    if (templateCats.length === 0) {
-      throw new Error('No tienes presupuestos plantilla configurados en tus categorías.');
-    }
-    try {
-      const existingBudgets = await budgetRepo.getAllByUserId(user.id, period);
 
-      await Promise.all(
-        templateCats.map(async cat => {
-          const existing = existingBudgets.find(
-            b => b.category.toLowerCase() === cat.name.toLowerCase()
-          );
-
-          if (existing) {
-            await budgetRepo.updateAmount(existing.id, cat.defaultBudget);
-          } else {
-            await budgetRepo.create({
-              userId: user.id,
-              category: cat.name,
-              amount: cat.defaultBudget,
-              period
-            });
-          }
-        })
-      );
-      await loadData();
-    } catch (err) {
-      console.error('Error applying budget templates:', err);
-      throw err;
-    }
-  };
 
   const copyBudgetPeriod = async (sourcePeriod: string, targetPeriod: string) => {
     if (!user) return;
@@ -455,7 +421,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCategoryBudget,
         setBudgetLimit,
         setBudgetLimitForPeriod,
-        applyBudgetTemplate,
         copyBudgetPeriod
       }}
     >

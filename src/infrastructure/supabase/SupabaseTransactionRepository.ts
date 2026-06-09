@@ -57,11 +57,8 @@ export class SupabaseTransactionRepository implements TransactionRepository {
     if (transaction.description !== undefined) raw.description = transaction.description;
     if (transaction.category !== undefined) raw.category = transaction.category;
     if (transaction.date !== undefined) {
-      // adjust for timezone offset to prevent date shifting back
       const d = new Date(transaction.date);
-      const tzOffset = d.getTimezoneOffset() * 60000;
-      const localDate = new Date(d.getTime() - tzOffset);
-      raw.date = localDate.toISOString().split('T')[0];
+      raw.date = d.toISOString().split('T')[0];
     }
 
     const { data, error } = await supabase

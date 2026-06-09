@@ -44,22 +44,21 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
       setCategory(transactionToEdit.category);
       setDescription(transactionToEdit.description);
       
-      // Prevent timezone offset shifts
+      // Prevent timezone offset shifts by reading the date in UTC format
       const d = new Date(transactionToEdit.date);
-      const tzOffset = d.getTimezoneOffset() * 60000;
-      const localDate = new Date(d.getTime() - tzOffset);
-      setDate(localDate.toISOString().split('T')[0]);
+      setDate(d.toISOString().split('T')[0]);
     } else {
       setType('expense');
       setAmount('');
       setCategory('');
       setDescription('');
       
-      // Default to today
+      // Default to today's date in local calendar format
       const today = new Date();
-      const tzOffset = today.getTimezoneOffset() * 60000;
-      const localDate = new Date(today.getTime() - tzOffset);
-      setDate(localDate.toISOString().split('T')[0]);
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      setDate(`${y}-${m}-${d}`);
     }
   }, [transactionToEdit]);
 
@@ -96,7 +95,7 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
       type,
       category,
       description: description.trim(),
-      date: new Date(date + 'T00:00:00')
+      date: new Date(date)
     };
 
     try {

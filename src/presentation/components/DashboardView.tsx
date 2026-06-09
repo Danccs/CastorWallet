@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { alerts } from '@presentation/utils/alerts';
 import { 
   ChevronLeft, 
   ChevronRight, 
   Plus, 
   TrendingDown, 
-  Edit2,
-  Copy
+  Edit2
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -21,8 +19,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
     transactions, 
     budgets, 
     categories, 
-    setBudgetLimit,
-    applyBudgetTemplate
+    setBudgetLimit
   } = useApp();
 
   const [editingBudgetCategory, setEditingBudgetCategory] = useState<string | null>(null);
@@ -47,6 +44,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
   const totalExpense = transactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
+
+  const totalIncome = transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const saldoLiquido = totalIncome - totalExpense;
 
   const totalBudgeted = budgets.reduce((sum, b) => sum + b.amount, 0);
   const remainingBudget = totalBudgeted - totalExpense;
@@ -86,20 +89,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
     setEditingBudgetCategory(null);
   };
 
-  const handleApplyTemplate = async () => {
-    const confirmed = await alerts.confirm(
-      '¿Aplicar plantilla?',
-      '¿Deseas aplicar la plantilla de presupuestos en el mes actual? Esto creará o actualizará los presupuestos de las categorías activas.'
-    );
-    if (confirmed) {
-      try {
-        await applyBudgetTemplate();
-        alerts.success('¡Aplicado!', 'Plantilla de presupuestos aplicada correctamente para este mes.');
-      } catch (err: any) {
-        alerts.error('Error', err.message || 'Error al aplicar la plantilla de presupuestos.');
-      }
-    }
-  };
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -206,6 +196,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
           </div>
         </div>
 
+        {/* Income and Liquid Balance breakdown */}
+        <div style={{
+          marginTop: '20px',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '16px'
+        }}>
+          <div>
+            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Ingresos</span>
+            <p style={{ fontSize: '1.2rem', fontWeight: 700, fontFamily: 'var(--font-display)', marginTop: '2px', color: '#c0ecda' }}>
+              +${totalIncome.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+            </p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Saldo Líquido</span>
+            <p style={{ 
+              fontSize: '1.2rem', 
+              fontWeight: 700, 
+              fontFamily: 'var(--font-display)', 
+              marginTop: '2px', 
+              color: saldoLiquido >= 0 ? '#c0ecda' : '#ffdbd1' 
+            }}>
+              {saldoLiquido >= 0 ? '+' : '-'}${Math.abs(saldoLiquido).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
         {/* Inner dividers for Budgeted and Remaining */}
         <div style={{
           marginTop: '20px',
@@ -261,24 +278,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onAddClick }) => {
       <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
           <h2 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Límites por Categoría</h2>
-          <button 
-            onClick={handleApplyTemplate}
-            style={{ 
-              fontSize: '0.75rem', 
-              color: 'var(--color-success)', 
-              fontWeight: 600,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              textDecoration: 'underline'
-            }}
-          >
-            <Copy size={12} />
-            Aplicar Plantilla
-          </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
