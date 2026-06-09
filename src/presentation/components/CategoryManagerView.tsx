@@ -6,11 +6,13 @@ import {
   Search, 
   Edit2, 
   Eye, 
-  EyeOff 
+  EyeOff,
+  Trash2
 } from 'lucide-react';
+import { alerts } from '@presentation/utils/alerts';
 
 export const CategoryManagerView: React.FC = () => {
-  const { categories, addCategory, toggleCategory, updateCategoryName } = useApp();
+  const { categories, addCategory, toggleCategory, updateCategoryName, deleteCategory } = useApp();
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
   const [searchTerm, setSearchTerm] = useState<string>('');
   
@@ -64,6 +66,21 @@ export const CategoryManagerView: React.FC = () => {
       setEditingCat(null);
     } catch (err: any) {
       setEditErrorMsg(err.message || 'Error al actualizar la categoría');
+    }
+  };
+
+  const handleDeleteCategory = async (cat: Category) => {
+    const confirmed = await alerts.confirmDanger(
+      '¿Eliminar categoría?',
+      `¿Estás seguro de que deseas eliminar la categoría "${cat.name}"? Esta acción es permanente y eliminará también sus presupuestos asociados.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteCategory(cat.name, cat.type);
+      alerts.success('Eliminada', 'La categoría ha sido eliminada con éxito.');
+    } catch (err: any) {
+      alerts.error('Error', err.message || 'Error al eliminar la categoría.');
     }
   };
 
@@ -203,7 +220,7 @@ export const CategoryManagerView: React.FC = () => {
                 </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {/* Edit Action */}
                 <button
                   onClick={() => handleStartEdit(cat)}
@@ -241,6 +258,25 @@ export const CategoryManagerView: React.FC = () => {
                   title={cat.active ? 'Desactivar' : 'Activar'}
                 >
                   {cat.active ? <Eye size={14} /> : <EyeOff size={14} />}
+                </button>
+
+                {/* Delete Action */}
+                <button
+                  onClick={() => handleDeleteCategory(cat)}
+                  style={{
+                    border: 'none',
+                    background: 'var(--color-danger-bg)',
+                    color: 'var(--color-danger)',
+                    borderRadius: '6px',
+                    padding: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Eliminar categoría"
+                >
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>

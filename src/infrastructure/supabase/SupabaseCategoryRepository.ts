@@ -58,4 +58,18 @@ export class SupabaseCategoryRepository implements CategoryRepository {
       throw new Error(error.message);
     }
   }
+
+  async delete(userId: string, name: string, type: 'income' | 'expense'): Promise<void> {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('user_id', userId)
+      .eq('name', name)
+      .eq('type', type);
+
+    if (error) {
+      console.error('Error deleting category in Supabase:', error);
+      throw new Error(error.message);
+    }
+  }
 }

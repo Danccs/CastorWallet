@@ -29,6 +29,7 @@ interface AppContextType {
   toggleCategory: (name: string, type: 'income' | 'expense') => Promise<void>;
   updateCategoryName: (oldName: string, newName: string, type: 'income' | 'expense') => Promise<void>;
   updateCategoryBudget: (name: string, type: 'income' | 'expense', budget: number) => Promise<void>;
+  deleteCategory: (name: string, type: 'income' | 'expense') => Promise<void>;
   
   // Budget operations
   setBudgetLimit: (category: string, limit: number) => Promise<void>;
@@ -324,6 +325,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const deleteCategory = async (name: string, type: 'income' | 'expense') => {
+    if (!user) return;
+    try {
+      // 1. Verify if there are any transactions associated with this category (all time)
+      const { count, error: countError } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('category', name)
+        .eq('type', type);
+
+      if (countError) {
+        throw new Error(countError.message);
+      }
+
+      if (count && count > 0) {
+        throw new Error('No se puede eliminar la categoría porque tiene movimientos asociados. Puedes desactivarla en su lugar.');
+      }
+
+      // 2. Delete budgets associated with this category (if any)
+      await supabase
+        .from('budgets')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('category', name);
+
+      // 3. Delete category from Supabase
+      await categoryRepo.delete(user.id, name, type);
+
+      // 4. Update state locally
+      setCategories(categories.filter(c => !(c.name.toLowerCase() === name.toLowerCase() && c.type === type)));
+      await loadData();
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      throw err;
+    }
+  };
+
   // Budgets Operations
   const setBudgetLimit = async (category: string, limit: number) => {
     await setBudgetLimitForPeriod(category, currentPeriod, limit);
@@ -419,6 +458,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleCategory,
         updateCategoryName,
         updateCategoryBudget,
+        deleteCategory,
         setBudgetLimit,
         setBudgetLimitForPeriod,
         copyBudgetPeriod

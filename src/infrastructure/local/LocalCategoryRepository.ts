@@ -76,4 +76,10 @@ export class LocalCategoryRepository implements CategoryRepository {
     });
     await this.saveAll(userId, updated);
   }
+
+  async delete(userId: string, name: string, type: 'income' | 'expense'): Promise<void> {
+    const list = await this.getAll(userId);
+    const updated = list.filter(c => !(c.name.toLowerCase() === name.toLowerCase() && c.type === type));
+    await this.saveAll(userId, updated);
+  }
 }
