@@ -8,6 +8,7 @@ import {
   Calendar,
   ArrowRight
 } from 'lucide-react';
+import { formatMoney } from '../utils/format';
 
 export const BudgetPlannerView: React.FC = () => {
   const { 
@@ -343,7 +344,7 @@ export const BudgetPlannerView: React.FC = () => {
                           onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(0.95)'}
                           onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
                           >
-                            {amount > 0 ? `$${amount.toLocaleString('es-ES', { maximumFractionDigits: 0 })}` : '-'}
+                            {amount > 0 ? `$${formatMoney(amount)}` : '-'}
                           </div>
                         </td>
                       );
@@ -375,7 +376,7 @@ export const BudgetPlannerView: React.FC = () => {
                           fontSize: '0.82rem'
                         }}
                       >
-                        {totalForPeriod > 0 ? `$${totalForPeriod.toLocaleString('es-ES', { maximumFractionDigits: 0 })}` : '$0'}
+                        {totalForPeriod > 0 ? `$${formatMoney(totalForPeriod)}` : '$0'}
                       </td>
                     );
                   })}

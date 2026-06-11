@@ -104,9 +104,9 @@ function MainContainer() {
             src="/logo.png"
             alt="CastorWallet Logo"
             style={{
-              width: '90px',
-              height: '90px',
-              borderRadius: '24px',
+              width: '180px',
+              height: '180px',
+              borderRadius: '48px',
               boxShadow: '0 8px 24px rgba(22, 52, 40, 0.12)',
               marginBottom: '20px',
               objectFit: 'cover'
@@ -357,7 +357,7 @@ function MainContainer() {
             ) : (
               <>
                 {activeTab === 'home' && (
-                  <DashboardView />
+                  <DashboardView onEditClick={handleEditClick} />
                 )}
                 {activeTab === 'budgets' && (
                   <BudgetPlannerView />

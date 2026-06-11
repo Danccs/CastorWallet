@@ -4,10 +4,17 @@ import {
   ChevronLeft, 
   ChevronRight, 
   TrendingDown, 
-  Edit2
+  Edit2,
+  X
 } from 'lucide-react';
+import type { Transaction } from '@domain/entities/Transaction';
+import { formatMoney } from '../utils/format';
 
-export const DashboardView: React.FC = () => {
+interface DashboardViewProps {
+  onEditClick?: (tx: Transaction) => void;
+}
+
+export const DashboardView: React.FC<DashboardViewProps> = ({ onEditClick }) => {
   const { 
     currentPeriod, 
     setCurrentPeriod, 
@@ -19,6 +26,7 @@ export const DashboardView: React.FC = () => {
 
   const [editingBudgetCategory, setEditingBudgetCategory] = useState<string | null>(null);
   const [newBudgetVal, setNewBudgetVal] = useState<string>('');
+  const [viewingCategory, setViewingCategory] = useState<string | null>(null);
 
   // 1. Calculate Active Month Display Name
   const getPeriodDisplayName = () => {
@@ -67,7 +75,7 @@ export const DashboardView: React.FC = () => {
       realSpent,
       percent: budget && budget.amount > 0 ? (realSpent / budget.amount) * 100 : 0
     };
-  });
+  }).filter(item => item.budgetLimit > 0 || item.realSpent > 0);
 
   const handleEditBudgetClick = (category: string, currentLimit: number) => {
     setEditingBudgetCategory(category);
@@ -173,7 +181,7 @@ export const DashboardView: React.FC = () => {
           <span style={{ fontSize: '0.85rem', opacity: 0.85 }}>Gastos Reales</span>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '2.2rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
-              ${totalExpense.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+              ${formatMoney(totalExpense)}
             </span>
             <div style={{ 
               display: 'flex', 
@@ -201,7 +209,7 @@ export const DashboardView: React.FC = () => {
           <div>
             <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Ingresos</span>
             <p style={{ fontSize: '1.2rem', fontWeight: 700, fontFamily: 'var(--font-display)', marginTop: '2px', color: '#c0ecda' }}>
-              +${totalIncome.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+              +${formatMoney(totalIncome)}
             </p>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -213,7 +221,7 @@ export const DashboardView: React.FC = () => {
               marginTop: '2px', 
               color: saldoLiquido >= 0 ? '#c0ecda' : '#ffdbd1' 
             }}>
-              {saldoLiquido >= 0 ? '+' : '-'}${Math.abs(saldoLiquido).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+              {saldoLiquido >= 0 ? '+' : '-'}${formatMoney(Math.abs(saldoLiquido))}
             </p>
           </div>
         </div>
@@ -230,7 +238,7 @@ export const DashboardView: React.FC = () => {
           <div>
             <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Presupuesto Total</span>
             <p style={{ fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-display)', marginTop: '2px' }}>
-              ${totalBudgeted.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+              ${formatMoney(totalBudgeted)}
             </p>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -244,7 +252,7 @@ export const DashboardView: React.FC = () => {
               marginTop: '2px',
               color: remainingBudget >= 0 ? '#c0ecda' : '#ffdbd1'
             }}>
-              ${Math.abs(remainingBudget).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+              ${formatMoney(Math.abs(remainingBudget))}
             </p>
           </div>
         </div>
@@ -263,7 +271,7 @@ export const DashboardView: React.FC = () => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', opacity: 0.8, marginTop: '6px' }}>
               <span>{overallProgress.toFixed(0)}% consumido</span>
-              <span>Límite: ${totalBudgeted.toLocaleString('es-ES', { maximumFractionDigits: 0 })}</span>
+              <span>Límite: ${formatMoney(totalBudgeted)}</span>
             </div>
           </div>
         )}
@@ -324,11 +332,22 @@ export const DashboardView: React.FC = () => {
                         <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {cat.name}
                         </td>
-                        <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          ${cat.realSpent.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+                        <td 
+                          onClick={() => cat.realSpent > 0 && setViewingCategory(cat.name)}
+                          style={{ 
+                            padding: '12px 10px', 
+                            textAlign: 'right', 
+                            fontWeight: 600, 
+                            color: cat.realSpent > 0 ? 'var(--color-primary)' : 'var(--text-primary)',
+                            cursor: cat.realSpent > 0 ? 'pointer' : 'default',
+                            textDecoration: cat.realSpent > 0 ? 'underline dotted' : 'none'
+                          }}
+                          title={cat.realSpent > 0 ? "Ver movimientos" : undefined}
+                        >
+                          ${formatMoney(cat.realSpent)}
                         </td>
                         <td style={{ padding: '12px 10px', textAlign: 'right', color: cat.budgetLimit > 0 ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: cat.budgetLimit > 0 ? 'normal' : 'italic' }}>
-                          {cat.budgetLimit > 0 ? `$${cat.budgetLimit.toLocaleString('es-ES', { maximumFractionDigits: 0 })}` : 'Sin límite'}
+                          {cat.budgetLimit > 0 ? `$${formatMoney(cat.budgetLimit)}` : 'Sin límite'}
                         </td>
                         <td style={{ padding: '12px 10px', textAlign: 'center' }}>
                           {cat.budgetLimit > 0 ? (
@@ -441,6 +460,130 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
+      {/* Category Spent Movements Modal Overlay */}
+      {viewingCategory && (() => {
+        const categoryTransactions = transactions
+          .filter(t => t.type === 'expense' && t.category.toLowerCase() === viewingCategory.toLowerCase())
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        const totalSpent = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+        return (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 300,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end'
+          }}>
+            {/* Touch backdrop to dismiss */}
+            <div style={{ flexGrow: 1 }} onClick={() => setViewingCategory(null)}></div>
+            
+            {/* Modal content sliding from bottom */}
+            <div style={{
+              backgroundColor: 'var(--card-bg)',
+              borderTopLeftRadius: '20px',
+              borderTopRightRadius: '20px',
+              padding: '20px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              borderTop: '1px solid var(--card-border)',
+              boxShadow: '0 -4px 16px rgba(0,0,0,0.1)',
+              position: 'relative'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Movimientos: {viewingCategory}</h3>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Total gastado en {getPeriodDisplayName()}: <strong>${formatMoney(totalSpent)}</strong>
+                  </span>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setViewingCategory(null)}
+                  style={{ 
+                    border: 'none', 
+                    background: 'var(--bg-secondary)', 
+                    color: 'var(--text-secondary)', 
+                    cursor: 'pointer', 
+                    borderRadius: '50%',
+                    width: '30px',
+                    height: '30px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Scrollable list of movements */}
+              <div style={{ 
+                overflowY: 'auto', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '8px', 
+                maxHeight: '55vh', 
+                paddingRight: '4px',
+                paddingBottom: '20px'
+              }}>
+                {categoryTransactions.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    No se encontraron gastos registrados para esta categoría.
+                  </div>
+                ) : (
+                  categoryTransactions.map(tx => (
+                    <div
+                      key={tx.id}
+                      onClick={() => {
+                        setViewingCategory(null);
+                        onEditClick?.(tx);
+                      }}
+                      className="transaction-item"
+                      style={{ 
+                        cursor: 'pointer',
+                        transition: 'transform 0.15s ease',
+                        marginBottom: '0px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                      onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+                      onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className={`transaction-icon ${tx.type}`}>
+                          <TrendingDown size={16} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {tx.description || 'Sin descripción'}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {new Date(tx.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className={`amount ${tx.type}`} style={{ fontSize: '0.95rem' }}>
+                        -${formatMoney(tx.amount)}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

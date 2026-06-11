@@ -217,20 +217,29 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  gap: 4px;
-  background: none;
+  gap: 3px;
+  background: transparent;
   border: none;
   cursor: pointer;
-  transition: color 0.2s;
+  height: 52px;
+  padding: 4px 16px;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-item:active {
+  transform: scale(0.92);
 }
 
 .nav-item.active {
   color: var(--color-primary);
-  font-weight: 600;
+  background: rgba(22, 52, 40, 0.08);
+  font-weight: 700;
 }
 
 /* Header UI */

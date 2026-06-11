@@ -62,16 +62,11 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
     }
   }, [transactionToEdit]);
 
-  // Set default category when type changes
+  // Reset category when type changes (do not preselect any category)
   useEffect(() => {
     if (isEditing) return; // Don't override on edit
-    const activeCats = categories.filter(c => c.type === type && c.active);
-    if (activeCats.length > 0) {
-      setCategory(activeCats[0].name);
-    } else {
-      setCategory('');
-    }
-  }, [type, categories]);
+    setCategory('');
+  }, [type]);
 
   // Filter categories for the modal list
   const activeCategories = categories.filter(
@@ -192,52 +187,87 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
       {/* Form Content */}
       <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         
-        {/* 1. Type Switcher Segmented Control */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '8px',
-          backgroundColor: 'var(--bg-secondary)',
-          padding: '4px',
-          borderRadius: '12px'
-        }}>
+        {/* 1. Type Switcher Segmented Control with Label */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label className="form-label" style={{ marginBottom: 0 }}>Seleccione un Tipo de Movimiento</label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '8px',
+            backgroundColor: 'var(--bg-secondary)',
+            padding: '4px',
+            borderRadius: '12px'
+          }}>
+            <button
+              type="button"
+              onClick={() => setType('expense')}
+              style={{
+                border: 'none',
+                padding: '12px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                background: type === 'expense' ? 'var(--color-danger)' : 'transparent',
+                color: type === 'expense' ? '#ffffff' : 'var(--text-secondary)',
+                transition: 'all 0.2s'
+              }}
+            >
+              Gasto (Egreso)
+            </button>
+            <button
+              type="button"
+              onClick={() => setType('income')}
+              style={{
+                border: 'none',
+                padding: '12px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                background: type === 'income' ? 'var(--color-success)' : 'transparent',
+                color: type === 'income' ? '#ffffff' : 'var(--text-secondary)',
+                transition: 'all 0.2s'
+              }}
+            >
+              Ingreso
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Category Selector Trigger Button */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Categoría</label>
           <button
             type="button"
-            onClick={() => setType('expense')}
+            onClick={() => {
+              setCatSearch('');
+              setShowCategoryModal(true);
+            }}
             style={{
-              border: 'none',
-              padding: '12px',
+              width: '100%',
+              padding: '14px 16px',
+              backgroundColor: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
               borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               cursor: 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              background: type === 'expense' ? 'var(--color-danger)' : 'transparent',
-              color: type === 'expense' ? '#ffffff' : 'var(--text-secondary)',
-              transition: 'all 0.2s'
+              textAlign: 'left'
             }}
           >
-            Gasto (Egreso)
-          </button>
-          <button
-            type="button"
-            onClick={() => setType('income')}
-            style={{
-              border: 'none',
-              padding: '12px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              background: type === 'income' ? 'var(--color-success)' : 'transparent',
-              color: type === 'income' ? '#ffffff' : 'var(--text-secondary)',
-              transition: 'all 0.2s'
-            }}
-          >
-            Ingreso
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
+              <Tag size={18} style={{ color: 'var(--color-success)' }} />
+              <span style={{ fontWeight: 500, fontSize: '0.95rem' }}>
+                {category || 'Selecciona una Categoría'}
+              </span>
+            </div>
+            <Search size={16} style={{ color: 'var(--text-muted)' }} />
           </button>
         </div>
 
-        {/* 2. Big Centered Amount Input */}
+        {/* 3. Big Centered Amount Input */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -277,38 +307,6 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
 
         {/* Form Fields Stack */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          
-          {/* 3. Category Selector Trigger Button */}
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Categoría</label>
-            <button
-              type="button"
-              onClick={() => {
-                setCatSearch('');
-                setShowCategoryModal(true);
-              }}
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                backgroundColor: 'var(--card-bg)',
-                border: '1px solid var(--card-border)',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-                textAlign: 'left'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
-                <Tag size={18} style={{ color: 'var(--color-success)' }} />
-                <span style={{ fontWeight: 500, fontSize: '0.95rem' }}>
-                  {category || 'Selecciona una Categoría'}
-                </span>
-              </div>
-              <Search size={16} style={{ color: 'var(--text-muted)' }} />
-            </button>
-          </div>
 
           {/* 4. Description Field */}
           <div className="form-group" style={{ marginBottom: 0 }}>
