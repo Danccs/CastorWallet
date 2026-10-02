@@ -31,6 +31,24 @@ export class SupabaseTransactionRepository implements TransactionRepository {
     return (data || []).map(TransactionMapper.toDomain);
   }
 
+  async getAllInDateRange(userId: string, startDate: string, endDate: string): Promise<Transaction[]> {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching transactions in range:', error);
+      throw new Error(error.message);
+    }
+
+    return (data || []).map(TransactionMapper.toDomain);
+  }
+
   async create(transaction: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> {
     const raw = TransactionMapper.toPersistence(transaction);
     const { data, error } = await supabase
@@ -45,6 +63,22 @@ export class SupabaseTransactionRepository implements TransactionRepository {
     }
 
     return TransactionMapper.toDomain(data);
+  }
+
+  async createBatch(transactions: Omit<Transaction, 'id' | 'createdAt'>[]): Promise<Transaction[]> {
+    if (transactions.length === 0) return [];
+    const raws = transactions.map(TransactionMapper.toPersistence);
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert(raws)
+      .select();
+
+    if (error) {
+      console.error('Error creating batch transactions:', error);
+      throw new Error(error.message);
+    }
+
+    return (data || []).map(TransactionMapper.toDomain);
   }
 
   async update(

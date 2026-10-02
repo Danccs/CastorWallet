@@ -21,6 +21,7 @@ interface AppContextType {
   
   // Transaction operations
   addTransaction: (tx: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => Promise<void>;
+  addTransactionsBatch: (txs: Omit<Transaction, 'id' | 'userId' | 'createdAt'>[]) => Promise<void>;
   editTransaction: (id: string, tx: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   
@@ -35,6 +36,9 @@ interface AppContextType {
   setBudgetLimit: (category: string, limit: number) => Promise<void>;
   setBudgetLimitForPeriod: (category: string, period: string, limit: number) => Promise<void>; // NUEVO
   copyBudgetPeriod: (sourcePeriod: string, targetPeriod: string) => Promise<void>; // NUEVO
+
+  // Stats / analytics
+  fetchTransactionsInDateRange: (startDate: string, endDate: string) => Promise<Transaction[]>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -195,6 +199,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await loadData();
     } catch (err) {
       console.error('Error creating transaction:', err);
+      throw err;
+    }
+  };
+
+  const addTransactionsBatch = async (txs: Omit<Transaction, 'id' | 'userId' | 'createdAt'>[]) => {
+    if (!user || txs.length === 0) return;
+    try {
+      if (transactionRepo.createBatch) {
+        await transactionRepo.createBatch(txs.map(tx => ({ ...tx, userId: user.id })));
+      } else {
+        await Promise.all(txs.map(tx => transactionRepo.create({ ...tx, userId: user.id })));
+      }
+      await loadData();
+    } catch (err) {
+      console.error('Error creating batch transactions:', err);
       throw err;
     }
   };
@@ -439,6 +458,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const fetchTransactionsInDateRange = async (startDate: string, endDate: string): Promise<Transaction[]> => {
+    if (!user) return [];
+    try {
+      return await transactionRepo.getAllInDateRange(user.id, startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching transactions in date range:', err);
+      throw err;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -452,6 +481,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         categories,
         loading,
         addTransaction,
+        addTransactionsBatch,
         editTransaction,
         deleteTransaction,
         addCategory,
@@ -461,7 +491,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteCategory,
         setBudgetLimit,
         setBudgetLimitForPeriod,
-        copyBudgetPeriod
+        copyBudgetPeriod,
+        fetchTransactionsInDateRange
       }}
     >
       {children}

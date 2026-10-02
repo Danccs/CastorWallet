@@ -7,14 +7,22 @@ import {
   Tag as TagIcon,
   LogOut,
   TrendingUp,
-  Plus
+  Plus,
+  ArrowRightLeft,
+  BarChart3,
+  MoreHorizontal,
+  X
 } from 'lucide-react';
 import { DashboardView } from '@presentation/components/DashboardView';
 import { HistoryView } from '@presentation/components/HistoryView';
 import { CategoryManagerView } from '@presentation/components/CategoryManagerView';
 import { TransactionFormView } from '@presentation/components/TransactionFormView';
 import { BudgetPlannerView } from '@presentation/components/BudgetPlannerView';
+import { BankReconciliationView } from '@presentation/components/BankReconciliationView';
+import { StatsView } from '@presentation/components/StatsView';
 import type { Transaction } from '@domain/entities/Transaction';
+
+type AppTab = 'home' | 'budgets' | 'history' | 'stats' | 'reconciliation' | 'categories';
 
 // Main App Component with Providers
 export default function App() {
@@ -32,10 +40,18 @@ function MainContainer() {
   const { user, loading, signInWithGoogle, signInWithGoogleToken, signOut } = useAuth();
   const { loading: loadingApp, categories } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'home' | 'budgets' | 'history' | 'categories'>('home');
+  const [activeTab, setActiveTab] = useState<AppTab>('home');
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
+  const [showMoreMenu, setShowMoreMenu] = useState<boolean>(false);
+
+  const openTab = (tab: AppTab) => {
+    setActiveTab(tab);
+    setShowMoreMenu(false);
+  };
+
+  const isMoreSectionActive = activeTab === 'reconciliation' || activeTab === 'categories';
 
   // Initialize official Google Sign-In button
   useEffect(() => {
@@ -363,7 +379,18 @@ function MainContainer() {
                   <BudgetPlannerView />
                 )}
                 {activeTab === 'history' && (
-                  <HistoryView onEditClick={handleEditClick} />
+                  <HistoryView
+                    onEditClick={handleEditClick}
+                    onOpenReconciliation={() => openTab('reconciliation')}
+                  />
+                )}
+                {activeTab === 'stats' && (
+                  <StatsView />
+                )}
+                {activeTab === 'reconciliation' && (
+                  <BankReconciliationView
+                    onEditTransaction={handleEditClick}
+                  />
                 )}
                 {activeTab === 'categories' && (
                   <CategoryManagerView />
@@ -378,35 +405,169 @@ function MainContainer() {
             `}</style>
           </main>
 
+          {/* More menu sheet */}
+          {showMoreMenu && (
+            <>
+              <div
+                onClick={() => setShowMoreMenu(false)}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  backgroundColor: 'rgba(22, 52, 40, 0.35)',
+                  zIndex: 200
+                }}
+              />
+              <div style={{
+                position: 'fixed',
+                left: '50%',
+                bottom: 0,
+                transform: 'translateX(-50%)',
+                width: '100%',
+                maxWidth: 'var(--mobile-max-width)',
+                backgroundColor: 'var(--card-bg)',
+                borderRadius: '20px 20px 0 0',
+                border: '1px solid var(--card-border)',
+                boxShadow: '0 -8px 30px rgba(0,0,0,0.12)',
+                zIndex: 201,
+                padding: '12px 16px calc(16px + env(safe-area-inset-bottom, 0px))',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px'
+                }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Más opciones
+                  </div>
+                  <button
+                    onClick={() => setShowMoreMenu(false)}
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--text-secondary)'
+                    }}
+                    title="Cerrar"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => openTab('reconciliation')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '14px 12px',
+                    borderRadius: '12px',
+                    border: '1px solid',
+                    borderColor: activeTab === 'reconciliation' ? 'var(--color-primary)' : 'var(--card-border)',
+                    backgroundColor: activeTab === 'reconciliation' ? 'var(--color-success-bg)' : 'var(--bg-secondary)',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    backgroundColor: 'var(--card-bg)',
+                    color: 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <ArrowRightLeft size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>Conciliar</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Comparar extracto bancario vs App</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => openTab('categories')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '14px 12px',
+                    borderRadius: '12px',
+                    border: '1px solid',
+                    borderColor: activeTab === 'categories' ? 'var(--color-primary)' : 'var(--card-border)',
+                    backgroundColor: activeTab === 'categories' ? 'var(--color-success-bg)' : 'var(--bg-secondary)',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    backgroundColor: 'var(--card-bg)',
+                    color: 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <TagIcon size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>Categorías</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Administrar partidas activas</div>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+
           {/* Navigation Bottom Bar */}
           <nav className="nav-bar" style={{ padding: '0 4px', gap: '2px' }}>
             <button
               className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
-              onClick={() => setActiveTab('home')}
+              onClick={() => openTab('home')}
             >
               <Wallet size={18} />
               <span style={{ fontSize: '0.7rem' }}>Inicio</span>
             </button>
             <button
-              className={`nav-item ${activeTab === 'budgets' ? 'active' : ''}`}
-              onClick={() => setActiveTab('budgets')}
-            >
-              <TrendingUp size={18} />
-              <span style={{ fontSize: '0.7rem' }}>Presupuestos</span>
-            </button>
-            <button
               className={`nav-item ${activeTab === 'history' ? 'active' : ''}`}
-              onClick={() => setActiveTab('history')}
+              onClick={() => openTab('history')}
             >
               <HistoryIcon size={18} />
               <span style={{ fontSize: '0.7rem' }}>Historial</span>
             </button>
             <button
-              className={`nav-item ${activeTab === 'categories' ? 'active' : ''}`}
-              onClick={() => setActiveTab('categories')}
+              className={`nav-item ${activeTab === 'stats' ? 'active' : ''}`}
+              onClick={() => openTab('stats')}
             >
-              <TagIcon size={18} />
-              <span style={{ fontSize: '0.7rem' }}>Categorías</span>
+              <BarChart3 size={18} />
+              <span style={{ fontSize: '0.7rem' }}>Stats</span>
+            </button>
+            <button
+              className={`nav-item ${activeTab === 'budgets' ? 'active' : ''}`}
+              onClick={() => openTab('budgets')}
+            >
+              <TrendingUp size={18} />
+              <span style={{ fontSize: '0.7rem' }}>Presupuestos</span>
+            </button>
+            <button
+              className={`nav-item ${isMoreSectionActive || showMoreMenu ? 'active' : ''}`}
+              onClick={() => setShowMoreMenu(prev => !prev)}
+            >
+              <MoreHorizontal size={18} />
+              <span style={{ fontSize: '0.7rem' }}>Más</span>
             </button>
           </nav>
         </>

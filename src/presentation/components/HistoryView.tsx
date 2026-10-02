@@ -6,19 +6,21 @@ import {
   ChevronRight, 
   Search, 
   TrendingUp, 
-  TrendingDown
+  TrendingDown,
+  ArrowRightLeft
 } from 'lucide-react';
 import { formatMoney } from '../utils/format';
 
 interface HistoryViewProps {
   onEditClick: (tx: Transaction) => void;
+  onOpenReconciliation?: () => void;
 }
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ onEditClick }) => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ onEditClick, onOpenReconciliation }) => {
   const { currentPeriod, setCurrentPeriod, transactions } = useApp();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
-  const [groupBy, setGroupBy] = useState<'date' | 'category'>('category');
+  const [groupBy, setGroupBy] = useState<'date' | 'category'>('date');
 
   // Month switching
   const changeMonth = (offset: number) => {
@@ -207,6 +209,62 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onEditClick }) => {
           <ChevronRight size={18} />
         </button>
       </section>
+
+      {/* Quick Reconciliation Banner */}
+      {onOpenReconciliation && (
+        <div style={{
+          backgroundColor: 'var(--card-bg)',
+          borderRadius: '14px',
+          border: '1px solid var(--card-border)',
+          padding: '12px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          boxShadow: 'var(--card-shadow)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              backgroundColor: 'var(--color-success-bg)',
+              color: 'var(--color-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <ArrowRightLeft size={16} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Conciliación Bancaria
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                Compara tu PDF de banco contra este mes
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenReconciliation}
+            style={{
+              backgroundColor: 'var(--color-primary)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            Conciliar
+          </button>
+        </div>
+      )}
 
       {/* Search and Filters */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
