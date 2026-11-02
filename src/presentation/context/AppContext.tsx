@@ -6,7 +6,13 @@ import type { Category } from '@domain/entities/Category';
 import { SupabaseTransactionRepository } from '@infrastructure/supabase/SupabaseTransactionRepository';
 import { SupabaseBudgetRepository } from '@infrastructure/supabase/SupabaseBudgetRepository';
 import { SupabaseCategoryRepository } from '@infrastructure/supabase/SupabaseCategoryRepository';
+import { SupabaseClosedPeriodRepository } from '@infrastructure/supabase/SupabaseClosedPeriodRepository';
 import { supabase } from '@infrastructure/supabase/client';
+import {
+  CLOSED_PERIOD_ERROR,
+  periodStartDate,
+  toPeriodKey,
+} from '@domain/services/MonthlyBalance';
 
 interface AppContextType {
   currentPeriod: string; // YYYY-MM
@@ -18,6 +24,11 @@ interface AppContextType {
   sixMonthBudgets: Budget[]; // NUEVO
   categories: Category[];
   loading: boolean;
+  saldoInicial: number;
+  isPeriodClosed: boolean;
+  isPeriodClosedFor: (periodOrDate: string | Date) => boolean;
+  closeCurrentPeriod: () => Promise<void>;
+  reopenCurrentPeriod: () => Promise<void>;
   
   // Transaction operations
   addTransaction: (tx: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => Promise<void>;
@@ -46,6 +57,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const transactionRepo = new SupabaseTransactionRepository();
 const budgetRepo = new SupabaseBudgetRepository();
 const categoryRepo = new SupabaseCategoryRepository();
+const closedPeriodRepo = new SupabaseClosedPeriodRepository();
 
 const DEFAULT_CATEGORIES: Category[] = [
   // Egresos (Expenses)
@@ -110,6 +122,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sixMonthBudgets, setSixMonthBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [saldoInicial, setSaldoInicial] = useState<number>(0);
+  const [closedPeriods, setClosedPeriods] = useState<string[]>([]);
+
+  const isPeriodClosedFor = (periodOrDate: string | Date): boolean => {
+    const period =
+      typeof periodOrDate === 'string' && /^\d{4}-\d{2}$/.test(periodOrDate)
+        ? periodOrDate
+        : toPeriodKey(periodOrDate);
+    return closedPeriods.includes(period);
+  };
+
+  const isPeriodClosed = isPeriodClosedFor(currentPeriod);
+
+  const assertPeriodOpen = (periodOrDate: string | Date) => {
+    if (isPeriodClosedFor(periodOrDate)) {
+      throw new Error(CLOSED_PERIOD_ERROR);
+    }
+  };
 
   // Load and Seed Categories once user is authenticated
   useEffect(() => {
@@ -142,6 +172,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTransactions([]);
       setBudgets([]);
       setSixMonthBudgets([]);
+      setSaldoInicial(0);
+      setClosedPeriods([]);
       return;
     }
 
@@ -149,10 +181,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const periodsToFetch = getNextSixPeriods(budgetStartPeriod);
       
-      const [fetchedTx, fetchedBudgets, fetchedSixMonthBudgets] = await Promise.all([
+      const [fetchedTx, fetchedBudgets, fetchedSixMonthBudgets, openingBalance, closed] = await Promise.all([
         transactionRepo.getAllByUserId(user.id, currentPeriod),
         budgetRepo.getAllByUserId(user.id, currentPeriod),
-        budgetRepo.getAllForPeriods(user.id, periodsToFetch)
+        budgetRepo.getAllForPeriods(user.id, periodsToFetch),
+        transactionRepo.getNetBalanceBefore(user.id, periodStartDate(currentPeriod)),
+        closedPeriodRepo.getAllByUserId(user.id),
       ]);
 
       // Calculate spent dynamically based on loaded transactions of this month
@@ -180,6 +214,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTransactions(fetchedTx);
       setBudgets(enrichedBudgets);
       setSixMonthBudgets(fetchedSixMonthBudgets);
+      setSaldoInicial(openingBalance);
+      setClosedPeriods(closed.map(c => c.period));
     } catch (err) {
       console.error('Error loading budgets or transactions:', err);
     } finally {
@@ -195,6 +231,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addTransaction = async (tx: Omit<Transaction, 'id' | 'userId' | 'createdAt'>) => {
     if (!user) return;
     try {
+      assertPeriodOpen(tx.date);
       await transactionRepo.create({ ...tx, userId: user.id });
       await loadData();
     } catch (err) {
@@ -206,6 +243,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addTransactionsBatch = async (txs: Omit<Transaction, 'id' | 'userId' | 'createdAt'>[]) => {
     if (!user || txs.length === 0) return;
     try {
+      for (const tx of txs) {
+        assertPeriodOpen(tx.date);
+      }
       if (transactionRepo.createBatch) {
         await transactionRepo.createBatch(txs.map(tx => ({ ...tx, userId: user.id })));
       } else {
@@ -221,6 +261,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const editTransaction = async (id: string, tx: Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt'>>) => {
     if (!user) return;
     try {
+      const existing = transactions.find(t => t.id === id);
+      if (existing) {
+        assertPeriodOpen(existing.date);
+      }
+      if (tx.date !== undefined) {
+        assertPeriodOpen(tx.date);
+      }
       await transactionRepo.update(id, tx);
       await loadData();
     } catch (err) {
@@ -232,10 +279,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteTransaction = async (id: string) => {
     if (!user) return;
     try {
+      const existing = transactions.find(t => t.id === id);
+      if (existing) {
+        assertPeriodOpen(existing.date);
+      }
       await transactionRepo.delete(id);
       await loadData();
     } catch (err) {
       console.error('Error deleting transaction:', err);
+      throw err;
+    }
+  };
+
+  const closeCurrentPeriod = async () => {
+    if (!user) return;
+    try {
+      await closedPeriodRepo.close(user.id, currentPeriod);
+      await loadData();
+    } catch (err) {
+      console.error('Error closing period:', err);
+      throw err;
+    }
+  };
+
+  const reopenCurrentPeriod = async () => {
+    if (!user) return;
+    try {
+      await closedPeriodRepo.reopen(user.id, currentPeriod);
+      await loadData();
+    } catch (err) {
+      console.error('Error reopening period:', err);
       throw err;
     }
   };
@@ -390,6 +463,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setBudgetLimitForPeriod = async (category: string, period: string, limit: number) => {
     if (!user) return;
     try {
+      assertPeriodOpen(period);
       // Check in the list of loaded 6-month budgets
       const existing = sixMonthBudgets.find(
         b => b.category.toLowerCase() === category.toLowerCase() && b.period === period
@@ -417,6 +491,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const copyBudgetPeriod = async (sourcePeriod: string, targetPeriod: string) => {
     if (!user) return;
     try {
+      assertPeriodOpen(targetPeriod);
       const [sourceBudgets, targetBudgets] = await Promise.all([
         budgetRepo.getAllByUserId(user.id, sourcePeriod),
         budgetRepo.getAllByUserId(user.id, targetPeriod)
@@ -480,6 +555,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sixMonthBudgets,
         categories,
         loading,
+        saldoInicial,
+        isPeriodClosed,
+        isPeriodClosedFor,
+        closeCurrentPeriod,
+        reopenCurrentPeriod,
         addTransaction,
         addTransactionsBatch,
         editTransaction,

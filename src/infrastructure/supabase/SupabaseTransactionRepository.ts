@@ -49,6 +49,24 @@ export class SupabaseTransactionRepository implements TransactionRepository {
     return (data || []).map(TransactionMapper.toDomain);
   }
 
+  async getNetBalanceBefore(userId: string, beforeDate: string): Promise<number> {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('amount, type')
+      .eq('user_id', userId)
+      .lt('date', beforeDate);
+
+    if (error) {
+      console.error('Error fetching net balance before date:', error);
+      throw new Error(error.message);
+    }
+
+    return (data || []).reduce((sum, row) => {
+      const amount = parseFloat(row.amount);
+      return row.type === 'income' ? sum + amount : sum - amount;
+    }, 0);
+  }
+
   async create(transaction: Omit<Transaction, 'id' | 'createdAt'>): Promise<Transaction> {
     const raw = TransactionMapper.toPersistence(transaction);
     const { data, error } = await supabase

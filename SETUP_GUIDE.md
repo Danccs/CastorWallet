@@ -140,6 +140,30 @@ create policy "Usuarios pueden ver sus propias categorias"
 create policy "Usuarios pueden gestionar sus propias categorias" 
   on public.categories for all 
   using (auth.uid() = user_id);
+
+-- =========================================================================
+-- 6. TABLA DE PERÍODOS CERRADOS (Bloqueo de meses)
+-- =========================================================================
+create table public.closed_periods (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  period text not null, -- Formato: 'YYYY-MM' (ej: '2026-06')
+  closed_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (user_id, period)
+);
+
+create index closed_periods_user_id_idx on public.closed_periods(user_id);
+
+alter table public.closed_periods enable row level security;
+
+create policy "Usuarios pueden ver sus propios periodos cerrados"
+  on public.closed_periods for select
+  using (auth.uid() = user_id);
+
+create policy "Usuarios pueden gestionar sus propios periodos cerrados"
+  on public.closed_periods for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 ```
 
 ---

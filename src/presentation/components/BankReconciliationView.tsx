@@ -25,7 +25,8 @@ import {
   TrendingUp,
   Edit2,
   Link2,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 
 type MergeSelection =
@@ -49,7 +50,8 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
     addTransaction,
     addTransactionsBatch,
     editTransaction,
-    deleteTransaction
+    deleteTransaction,
+    isPeriodClosed,
   } = useApp();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,6 +105,10 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
 
   // Handle PDF upload
   const handleFileUpload = async (file: File) => {
+    if (isPeriodClosed) {
+      alerts.warning('Mes cerrado', 'Reabre el mes desde Inicio para conciliar o importar movimientos.');
+      return;
+    }
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       alerts.error('Formato no soportado', 'Por favor selecciona un archivo PDF de tu banco.');
       return;
@@ -178,6 +184,10 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
 
   // Add a single missing movement to CastorWallet
   const handleAddSingleMissing = async (movement: BankMovement, suggestedCat: string) => {
+    if (isPeriodClosed) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para agregar movimientos.');
+      return;
+    }
     const chosenCat = selectedCategories[movement.id] || suggestedCat;
     try {
       await addTransaction({
@@ -196,6 +206,10 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
   // Batch add all missing movements
   const handleAddAllMissing = async () => {
     if (!reconciliation || reconciliation.missingInWallet.length === 0) return;
+    if (isPeriodClosed) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para agregar movimientos.');
+      return;
+    }
 
     const count = reconciliation.missingInWallet.length;
     const confirmed = await alerts.confirm(
@@ -228,6 +242,10 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
 
   // Delete an extra transaction from wallet
   const handleDeleteExtra = async (tx: Transaction) => {
+    if (isPeriodClosed) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para eliminar movimientos.');
+      return;
+    }
     const confirmed = await alerts.confirmDanger(
       'Eliminar Movimiento',
       `¿Estás seguro de eliminar "${tx.description || tx.category}" por $${formatMoney(tx.amount)}? No aparece en el extracto bancario.`
@@ -245,11 +263,19 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
   };
 
   const startMergeFromBank = (bank: BankMovement) => {
+    if (isPeriodClosed) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para fusionar movimientos.');
+      return;
+    }
     setMergeSelection({ side: 'bank', bank });
     setActiveTab('extra');
   };
 
   const startMergeFromWallet = (tx: Transaction) => {
+    if (isPeriodClosed) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para fusionar movimientos.');
+      return;
+    }
     setMergeSelection({ side: 'wallet', tx });
     setActiveTab('missing');
   };
@@ -257,6 +283,10 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
   const cancelMerge = () => setMergeSelection(null);
 
   const handleManualMerge = async (bank: BankMovement, walletTx: Transaction) => {
+    if (isPeriodClosed) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para fusionar movimientos.');
+      return;
+    }
     if (bank.type !== walletTx.type) {
       alerts.warning(
         'Tipos distintos',
@@ -397,6 +427,19 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
           <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
             {getPeriodDisplayName()}
           </div>
+          {isPeriodClosed && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              marginTop: '4px',
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              color: 'var(--color-danger)'
+            }}>
+              <Lock size={10} /> Mes cerrado
+            </div>
+          )}
         </div>
 
         <button
@@ -419,29 +462,57 @@ export const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({
         </button>
       </div>
 
+      {isPeriodClosed && (
+        <div style={{
+          backgroundColor: 'var(--color-danger-bg)',
+          color: 'var(--color-danger)',
+          borderRadius: '12px',
+          padding: '10px 12px',
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <Lock size={14} />
+          Este mes está cerrado. Puedes revisar, pero no importar ni modificar movimientos.
+        </div>
+      )}
+
       {/* PDF Upload / Loaded Banner */}
       {bankMovements.length === 0 ? (
         <div
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            if (isPeriodClosed) {
+              alerts.warning('Mes cerrado', 'Reabre el mes desde Inicio para conciliar o importar movimientos.');
+              return;
+            }
+            fileInputRef.current?.click();
+          }}
           style={{
             backgroundColor: 'var(--card-bg)',
             border: '2px dashed var(--card-border)',
             borderRadius: '16px',
             padding: '30px 20px',
             textAlign: 'center',
-            cursor: isProcessing ? 'wait' : 'pointer',
+            cursor: isPeriodClosed ? 'not-allowed' : (isProcessing ? 'wait' : 'pointer'),
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '12px',
             transition: 'all 0.2s ease',
-            boxShadow: 'var(--card-shadow)'
+            boxShadow: 'var(--card-shadow)',
+            opacity: isPeriodClosed ? 0.65 : 1
           }}
-          onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
+          onDragOver={(e) => { e.preventDefault(); if (!isPeriodClosed) e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
           onDragLeave={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--card-border)'; }}
           onDrop={(e) => {
             e.preventDefault();
             e.currentTarget.style.borderColor = 'var(--card-border)';
+            if (isPeriodClosed) {
+              alerts.warning('Mes cerrado', 'Reabre el mes desde Inicio para conciliar o importar movimientos.');
+              return;
+            }
             if (e.dataTransfer.files && e.dataTransfer.files[0]) {
               handleFileUpload(e.dataTransfer.files[0]);
             }

@@ -5,10 +5,14 @@ import {
   ChevronRight, 
   TrendingDown, 
   Edit2,
-  X
+  X,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import type { Transaction } from '@domain/entities/Transaction';
 import { formatMoney } from '../utils/format';
+import { alerts } from '@presentation/utils/alerts';
+import { computeFinalBalance } from '@domain/services/MonthlyBalance';
 
 interface DashboardViewProps {
   onEditClick?: (tx: Transaction) => void;
@@ -21,7 +25,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onEditClick }) => 
     transactions, 
     budgets, 
     categories, 
-    setBudgetLimit
+    setBudgetLimit,
+    saldoInicial,
+    isPeriodClosed,
+    closeCurrentPeriod,
+    reopenCurrentPeriod,
   } = useApp();
 
   const [editingBudgetCategory, setEditingBudgetCategory] = useState<string | null>(null);
@@ -52,7 +60,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onEditClick }) => 
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const saldoLiquido = totalIncome - totalExpense;
+  const saldoLiquido = computeFinalBalance(saldoInicial, totalIncome, totalExpense);
+
+  const handleTogglePeriodLock = async () => {
+    try {
+      if (isPeriodClosed) {
+        const confirmed = await alerts.confirm(
+          '¿Reabrir mes?',
+          'Al reabrir el mes podrás modificar movimientos y presupuestos de este período.',
+          'Reabrir',
+          'Cancelar'
+        );
+        if (!confirmed) return;
+        await reopenCurrentPeriod();
+        await alerts.success('Mes reabierto');
+      } else {
+        const confirmed = await alerts.confirm(
+          '¿Cerrar mes?',
+          'No se podrán crear, editar ni eliminar movimientos ni presupuestos de este mes hasta que lo reabras.',
+          'Cerrar mes',
+          'Cancelar'
+        );
+        if (!confirmed) return;
+        await closeCurrentPeriod();
+        await alerts.success('Mes cerrado');
+      }
+    } catch (err) {
+      alerts.error('Error', err instanceof Error ? err.message : 'No se pudo actualizar el cierre del mes');
+    }
+  };
 
   const totalBudgeted = budgets.reduce((sum, b) => sum + b.amount, 0);
   const remainingBudget = totalBudgeted - totalExpense;
@@ -78,6 +114,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onEditClick }) => 
   }).filter(item => item.budgetLimit > 0 || item.realSpent > 0);
 
   const handleEditBudgetClick = (category: string, currentLimit: number) => {
+    if (isPeriodClosed) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para editar presupuestos.');
+      return;
+    }
     setEditingBudgetCategory(category);
     setNewBudgetVal(currentLimit > 0 ? currentLimit.toString() : '');
   };
@@ -87,7 +127,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onEditClick }) => 
     if (!editingBudgetCategory) return;
     const parsed = parseFloat(newBudgetVal);
     if (!isNaN(parsed) && parsed >= 0) {
-      await setBudgetLimit(editingBudgetCategory, parsed);
+      try {
+        await setBudgetLimit(editingBudgetCategory, parsed);
+      } catch (err) {
+        alerts.error('Error', err instanceof Error ? err.message : 'No se pudo guardar el presupuesto');
+      }
     }
     setEditingBudgetCategory(null);
   };
@@ -126,15 +170,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onEditClick }) => 
         >
           <ChevronLeft size={20} />
         </button>
-        <span style={{ 
-          fontFamily: 'var(--font-display)', 
-          fontWeight: 700, 
-          fontSize: '1.1rem', 
-          color: 'var(--color-primary)', 
-          textTransform: 'capitalize' 
-        }}>
-          {getPeriodDisplayName()}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+          <span style={{ 
+            fontFamily: 'var(--font-display)', 
+            fontWeight: 700, 
+            fontSize: '1.1rem', 
+            color: 'var(--color-primary)', 
+            textTransform: 'capitalize' 
+          }}>
+            {getPeriodDisplayName()}
+          </span>
+          {isPeriodClosed && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              color: 'var(--text-secondary)',
+              textTransform: 'none'
+            }}>
+              <Lock size={10} /> Mes cerrado
+            </span>
+          )}
+        </div>
         <button 
           onClick={() => changeMonth(1)}
           style={{
@@ -199,23 +258,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onEditClick }) => 
           </div>
         </div>
 
-        {/* Income and Liquid Balance breakdown */}
+        {/* Opening / income / final liquid balance */}
         <div style={{
           marginTop: '12px',
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: '16px'
+          gap: '12px 16px'
         }}>
           <div>
-            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Ingresos</span>
-            <p style={{ fontSize: '1.2rem', fontWeight: 700, fontFamily: 'var(--font-display)', marginTop: '2px', color: '#c0ecda' }}>
-              +${formatMoney(totalIncome)}
+            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Saldo Inicial</span>
+            <p style={{
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              fontFamily: 'var(--font-display)',
+              marginTop: '2px',
+              color: saldoInicial >= 0 ? '#c0ecda' : '#ffdbd1'
+            }}>
+              {saldoInicial >= 0 ? '+' : '-'}${formatMoney(Math.abs(saldoInicial))}
             </p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Saldo Líquido</span>
+            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Ingresos</span>
+            <p style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-display)', marginTop: '2px', color: '#c0ecda' }}>
+              +${formatMoney(totalIncome)}
+            </p>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Saldo Líquido Final</span>
             <p style={{ 
-              fontSize: '1.2rem', 
+              fontSize: '1.35rem', 
               fontWeight: 700, 
               fontFamily: 'var(--font-display)', 
               marginTop: '2px', 
@@ -224,6 +295,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onEditClick }) => 
               {saldoLiquido >= 0 ? '+' : '-'}${formatMoney(Math.abs(saldoLiquido))}
             </p>
           </div>
+        </div>
+
+        <div style={{ marginTop: '12px' }}>
+          <button
+            type="button"
+            onClick={handleTogglePeriodLock}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              border: '1px solid rgba(255,255,255,0.25)',
+              background: 'rgba(255,255,255,0.1)',
+              color: '#ffffff',
+              borderRadius: '999px',
+              padding: '6px 12px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {isPeriodClosed ? <Unlock size={14} /> : <Lock size={14} />}
+            {isPeriodClosed ? 'Reabrir mes' : 'Cerrar mes'}
+          </button>
         </div>
 
         {/* Inner dividers for Budgeted and Remaining */}

@@ -17,7 +17,8 @@ export const BudgetPlannerView: React.FC = () => {
     categories, 
     sixMonthBudgets, 
     setBudgetLimitForPeriod, 
-    copyBudgetPeriod
+    copyBudgetPeriod,
+    isPeriodClosedFor,
   } = useApp();
 
   // Modal Editing Month Specific Budget
@@ -146,6 +147,10 @@ export const BudgetPlannerView: React.FC = () => {
 
   // 2. Planning Grid Cell Actions
   const handleCellClick = (category: string, period: string) => {
+    if (isPeriodClosedFor(period)) {
+      alerts.warning('Mes cerrado', 'Reabre el mes desde Inicio para editar presupuestos.');
+      return;
+    }
     const existingBudget = sixMonthBudgets.find(
       b => b.category.toLowerCase() === category.toLowerCase() && b.period === period
     );

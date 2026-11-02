@@ -21,7 +21,13 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
   transactionToEdit, 
   onClose 
 }) => {
-  const { categories, addTransaction, editTransaction, deleteTransaction } = useApp();
+  const {
+    categories,
+    addTransaction,
+    editTransaction,
+    deleteTransaction,
+    isPeriodClosedFor,
+  } = useApp();
 
   const isEditing = !!transactionToEdit;
 
@@ -73,8 +79,21 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
     c => c.type === type && c.active && c.name.toLowerCase().includes(catSearch.toLowerCase())
   );
 
+  const selectedPeriodClosed = date ? isPeriodClosedFor(date) : false;
+  const originalPeriodClosed = transactionToEdit
+    ? isPeriodClosedFor(transactionToEdit.date)
+    : false;
+  /** Editing a tx that already belongs to a closed month: fully read-only. */
+  const isFullyReadOnly = originalPeriodClosed;
+  /** Save/delete blocked if target or original period is closed. */
+  const isMutationBlocked = selectedPeriodClosed || originalPeriodClosed;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isMutationBlocked) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para crear o editar movimientos.');
+      return;
+    }
     const parsedAmount = Math.round(parseFloat(amount));
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       alerts.warning('Monto inválido', 'Por favor introduce un monto válido mayor a 0');
@@ -101,12 +120,16 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
       }
       onClose();
     } catch (err) {
-      alerts.error('Error', 'Ocurrió un error al guardar el movimiento');
+      alerts.error('Error', err instanceof Error ? err.message : 'Ocurrió un error al guardar el movimiento');
     }
   };
 
   const handleDelete = async () => {
     if (!transactionToEdit) return;
+    if (isMutationBlocked) {
+      alerts.warning('Mes cerrado', 'Reabre el mes para eliminar movimientos.');
+      return;
+    }
     const confirmed = await alerts.confirmDanger(
       '¿Eliminar movimiento?',
       '¿Estás seguro de que deseas eliminar este movimiento? Esta acción no se puede deshacer.'
@@ -116,7 +139,7 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
         await deleteTransaction(transactionToEdit.id);
         onClose();
       } catch (err) {
-        alerts.error('Error', 'Error al eliminar el movimiento');
+        alerts.error('Error', err instanceof Error ? err.message : 'Error al eliminar el movimiento');
       }
     }
   };
@@ -160,7 +183,7 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
           </h2>
         </div>
 
-        {isEditing && (
+        {isEditing && !isFullyReadOnly && (
           <button
             type="button"
             onClick={handleDelete}
@@ -186,6 +209,20 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
 
       {/* Form Content */}
       <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {isMutationBlocked && (
+          <div style={{
+            backgroundColor: 'var(--color-danger-bg)',
+            color: 'var(--color-danger)',
+            borderRadius: '10px',
+            padding: '10px 12px',
+            fontSize: '0.82rem',
+            fontWeight: 600
+          }}>
+            {isFullyReadOnly
+              ? 'Este mes está cerrado. Reábrelo desde Inicio para modificar movimientos.'
+              : 'La fecha pertenece a un mes cerrado. Elige otra fecha o reabre ese mes.'}
+          </div>
+        )}
         
         {/* 1. Type Switcher Segmented Control with Label */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -200,34 +237,38 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
           }}>
             <button
               type="button"
-              onClick={() => setType('expense')}
+              onClick={() => !isFullyReadOnly && setType('expense')}
+              disabled={isFullyReadOnly}
               style={{
                 border: 'none',
                 padding: '12px',
                 borderRadius: '8px',
-                cursor: 'pointer',
+                cursor: isFullyReadOnly ? 'not-allowed' : 'pointer',
                 fontSize: '0.9rem',
                 fontWeight: 600,
                 background: type === 'expense' ? 'var(--color-danger)' : 'transparent',
                 color: type === 'expense' ? '#ffffff' : 'var(--text-secondary)',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                opacity: isFullyReadOnly ? 0.7 : 1
               }}
             >
               Gasto (Egreso)
             </button>
             <button
               type="button"
-              onClick={() => setType('income')}
+              onClick={() => !isFullyReadOnly && setType('income')}
+              disabled={isFullyReadOnly}
               style={{
                 border: 'none',
                 padding: '12px',
                 borderRadius: '8px',
-                cursor: 'pointer',
+                cursor: isFullyReadOnly ? 'not-allowed' : 'pointer',
                 fontSize: '0.9rem',
                 fontWeight: 600,
                 background: type === 'income' ? 'var(--color-success)' : 'transparent',
                 color: type === 'income' ? '#ffffff' : 'var(--text-secondary)',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                opacity: isFullyReadOnly ? 0.7 : 1
               }}
             >
               Ingreso
@@ -241,9 +282,11 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
           <button
             type="button"
             onClick={() => {
+              if (isFullyReadOnly) return;
               setCatSearch('');
               setShowCategoryModal(true);
             }}
+            disabled={isFullyReadOnly}
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -253,8 +296,9 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              cursor: 'pointer',
-              textAlign: 'left'
+              cursor: isFullyReadOnly ? 'not-allowed' : 'pointer',
+              textAlign: 'left',
+              opacity: isFullyReadOnly ? 0.7 : 1
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
@@ -289,6 +333,7 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
               placeholder="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              disabled={isFullyReadOnly}
               style={{
                 fontSize: '2.5rem',
                 fontWeight: 700,
@@ -297,10 +342,11 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
                 border: 'none',
                 outline: 'none',
                 width: '100%',
-                color: type === 'expense' ? 'var(--color-danger)' : 'var(--color-success)'
+                color: type === 'expense' ? 'var(--color-danger)' : 'var(--color-success)',
+                opacity: isFullyReadOnly ? 0.7 : 1
               }}
               required
-              autoFocus={!isEditing}
+              autoFocus={!isEditing && !isFullyReadOnly}
             />
           </div>
         </div>
@@ -319,7 +365,8 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                style={{ paddingLeft: '40px', resize: 'none' }}
+                disabled={isFullyReadOnly}
+                style={{ paddingLeft: '40px', resize: 'none', opacity: isFullyReadOnly ? 0.7 : 1 }}
               />
             </div>
           </div>
@@ -334,7 +381,8 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
                 className="form-input"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                style={{ paddingLeft: '40px' }}
+                disabled={isFullyReadOnly}
+                style={{ paddingLeft: '40px', opacity: isFullyReadOnly ? 0.7 : 1 }}
                 required
               />
             </div>
@@ -358,9 +406,20 @@ export const TransactionFormView: React.FC<TransactionFormViewProps> = ({
           <button 
             type="submit" 
             className="btn btn-primary"
-            style={{ height: '52px', fontWeight: 600, fontSize: '1.05rem' }}
+            disabled={isMutationBlocked}
+            style={{
+              height: '52px',
+              fontWeight: 600,
+              fontSize: '1.05rem',
+              opacity: isMutationBlocked ? 0.55 : 1,
+              cursor: isMutationBlocked ? 'not-allowed' : 'pointer'
+            }}
           >
-            {isEditing ? 'Guardar Cambios' : 'Registrar Movimiento'}
+            {isMutationBlocked
+              ? 'Mes cerrado'
+              : isEditing
+                ? 'Guardar Cambios'
+                : 'Registrar Movimiento'}
           </button>
         </div>
 

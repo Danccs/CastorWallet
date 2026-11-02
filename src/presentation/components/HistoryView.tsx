@@ -7,9 +7,12 @@ import {
   Search, 
   TrendingUp, 
   TrendingDown,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Lock
 } from 'lucide-react';
 import { formatMoney } from '../utils/format';
+import { alerts } from '@presentation/utils/alerts';
+import { computeFinalBalance } from '@domain/services/MonthlyBalance';
 
 interface HistoryViewProps {
   onEditClick: (tx: Transaction) => void;
@@ -17,7 +20,7 @@ interface HistoryViewProps {
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ onEditClick, onOpenReconciliation }) => {
-  const { currentPeriod, setCurrentPeriod, transactions } = useApp();
+  const { currentPeriod, setCurrentPeriod, transactions, saldoInicial, isPeriodClosed } = useApp();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [groupBy, setGroupBy] = useState<'date' | 'category'>('date');
@@ -46,7 +49,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onEditClick, onOpenRec
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const netFlow = totalIncome - totalExpense;
+  const netFlow = computeFinalBalance(saldoInicial, totalIncome, totalExpense);
+
+  const handleEditClick = (tx: Transaction) => {
+    if (isPeriodClosed) {
+      alerts.info('Mes cerrado', 'Puedes ver el movimiento, pero no modificarlo hasta reabrir el mes.');
+    }
+    onEditClick(tx);
+  };
 
   // Filter transactions
   const filteredTransactions = transactions.filter(t => {
@@ -116,7 +126,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onEditClick, onOpenRec
     return (
       <div
         key={tx.id}
-        onClick={() => onEditClick(tx)}
+        onClick={() => handleEditClick(tx)}
         className="transaction-item"
         style={{ 
           cursor: 'pointer',
@@ -183,12 +193,30 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onEditClick, onOpenRec
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700, textTransform: 'capitalize', color: 'var(--color-primary)' }}>
             {getPeriodDisplayName()}
           </h2>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            Balance del mes:{' '}
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            Inicial:{' '}
+            <strong style={{ color: saldoInicial >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+              {saldoInicial >= 0 ? '+' : '-'}${formatMoney(Math.abs(saldoInicial))}
+            </strong>
+            {' · '}
+            Final:{' '}
             <strong style={{ color: netFlow >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
               {netFlow >= 0 ? '+' : '-'}${formatMoney(Math.abs(netFlow))}
             </strong>
           </p>
+          {isPeriodClosed && (
+            <p style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              color: 'var(--text-muted)',
+              marginTop: '4px'
+            }}>
+              <Lock size={10} /> Mes cerrado
+            </p>
+          )}
         </div>
 
         <button 
